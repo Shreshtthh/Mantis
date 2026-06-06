@@ -1,0 +1,34 @@
+{
+  "name": "mantis",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "worker": "ts-node --esm src/worker/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/groq": "^3.0.39",
+    "@ai-sdk/react": "^3.0.199",
+    "ai": "^6.0.197",
+    "better-sqlite3": "^11.7.0",
+    "next": "14.2.29",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-markdown": "latest",
+    "typescript": "^5",
+    "viem": "^2.21.54",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.29"
+  }
+}
