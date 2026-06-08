@@ -7,6 +7,7 @@
  * - logAction() — log a tool call and its result
  * - getActionHistory() — retrieve past actions
  */
+
 import { randomUUID } from 'crypto';
 import {
   saveMessage as dbSaveMessage,
@@ -15,13 +16,16 @@ import {
   getRecentActions,
 } from '@/lib/db';
 import type { TxResult } from '@/lib/types';
+
 // ============================================================
 // MESSAGES
 // ============================================================
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
+
 export function persistMessage(
   sessionId: string,
   role: 'user' | 'assistant' | 'tool',
@@ -38,6 +42,7 @@ export function persistMessage(
     toolResult,
   });
 }
+
 /**
  * Get recent messages for this session, formatted for the AI SDK's messages array.
  * Returns at most `limit` messages, oldest first.
@@ -47,14 +52,17 @@ export function getContextMessages(sessionId: string, limit = 20): ChatMessage[]
     role: 'user' | 'assistant' | 'tool';
     content: string;
   }>;
+
   // Filter to just user/assistant for the LLM context (tool messages are internal)
   return rows
     .filter((r) => r.role === 'user' || r.role === 'assistant')
     .map((r) => ({ role: r.role as 'user' | 'assistant', content: r.content }));
 }
+
 // ============================================================
 // ACTION LOG
 // ============================================================
+
 export function recordAction(params: {
   sessionId: string;
   action: string;
@@ -77,6 +85,7 @@ export function recordAction(params: {
     auditTxHash: params.auditTxHash,
   });
 }
+
 export function getActionHistory(limit = 20) {
   return getRecentActions(limit);
 }
