@@ -22,6 +22,7 @@
  *    - Gas anomaly detected
  *    - Slippage exceeded
  */
+
 import { GUARDRAIL_DEFAULTS } from './config';
 import {
   getCircuitBreakerState,
@@ -30,14 +31,17 @@ import {
   resetCircuitBreaker as dbResetCircuitBreaker,
 } from '@/lib/db';
 import type { GuardrailCheck, TxResult } from '@/lib/types';
+
 // ============================================================
 // HARD GUARDRAIL CHECKS
 // ============================================================
+
 export function checkHard(
   action: string,
   params: Record<string, unknown>
 ): GuardrailCheck {
   const state = getCircuitBreakerState();
+
   // Kill switch — absolute blocker
   if (state.killSwitchEngaged) {
     return {
@@ -45,6 +49,7 @@ export function checkHard(
       reason: '🔴 Kill switch is engaged. All actions are blocked. Use the dashboard to disengage.',
     };
   }
+
   // Circuit breaker — auto-tripped
   if (state.isTripped) {
     return {
@@ -52,6 +57,7 @@ export function checkHard(
       reason: `🔴 Circuit breaker active: ${state.reason}. Reset it from the dashboard when ready.`,
     };
   }
+
   // Token whitelist (for swap/deposit actions)
   if (action === 'swapTokens') {
     const { tokenIn, tokenOut } = params as { tokenIn: string; tokenOut: string };
@@ -62,12 +68,14 @@ export function checkHard(
       return { allowed: false, reason: `🔴 Token ${tokenOut} is not on the approved list.` };
     }
   }
+
   if (action === 'depositLendle' || action === 'withdrawLendle') {
     const { token } = params as { token: string };
     if (!GUARDRAIL_DEFAULTS.approvedTokens.includes(token)) {
       return { allowed: false, reason: `🔴 Token ${token} is not on the approved list.` };
     }
   }
+
   // Perps market whitelist
   if (action === 'openPerpsPosition') {
     const { market, leverage, sizeUsd } = params as { market: string; leverage: number; sizeUsd: number };
@@ -89,6 +97,7 @@ export function checkHard(
       };
     }
   }
+
   // Generic size hard cap for swaps/deposits
   if (action === 'swapTokens' || action === 'depositLendle') {
     const amount = (params.amount ?? params.sizeUsd ?? 0) as number;
@@ -99,6 +108,52 @@ export function checkHard(
       };
     }
   }
+
+  // Consolidated managePerps guardrails (v2)
+  if (action === 'managePerps') {
+    const { coin, size, leverage } = params as { coin?: string; size?: number; leverage?: number };
+    const perpsAction = params.action as string;
+    const writeActions = ['market_buy', 'market_sell', 'limit_buy', 'limit_sell', 'set_leverage'];
+
+    if (writeActions.includes(perpsAction)) {
+      // Market whitelist (coin maps to market)
+      if (coin) {
+        const market = `${coin}-PERP`;
+        if (!GUARDRAIL_DEFAULTS.approvedMarkets.includes(market)) {
+          return { allowed: false, reason: `🔴 Market ${market} is not on the approved list.` };
+        }
+      }
+      // Leverage hard cap
+      if (leverage && leverage > GUARDRAIL_DEFAULTS.maxLeverageX) {
+        return {
+          allowed: false,
+          reason: `🔴 Leverage ${leverage}x exceeds the hard limit of ${GUARDRAIL_DEFAULTS.maxLeverageX}x.`,
+        };
+      }
+      // Size hard cap
+      if (size && size > GUARDRAIL_DEFAULTS.maxSingleTradeSizeUsd) {
+        return {
+          allowed: false,
+          reason: `🔴 Trade size $${size} exceeds the maximum of $${GUARDRAIL_DEFAULTS.maxSingleTradeSizeUsd}.`,
+        };
+      }
+    }
+  }
+
+  // Consolidated manageLending guardrails (v2)
+  if (action === 'manageLending') {
+    const { token, amount } = params as { token?: string; amount?: number };
+    if (token && !GUARDRAIL_DEFAULTS.approvedTokens.includes(token)) {
+      return { allowed: false, reason: `🔴 Token ${token} is not on the approved list.` };
+    }
+    if (amount && amount > GUARDRAIL_DEFAULTS.maxSingleTradeSizeUsd) {
+      return {
+        allowed: false,
+        reason: `🔴 Amount $${amount} exceeds the single trade limit of $${GUARDRAIL_DEFAULTS.maxSingleTradeSizeUsd}.`,
+      };
+    }
+  }
+
   // Daily loss limit
   if (state.dailyLossUsd >= GUARDRAIL_DEFAULTS.maxDailyLossUsd) {
     return {
@@ -106,11 +161,14 @@ export function checkHard(
       reason: `🔴 Daily loss limit of $${GUARDRAIL_DEFAULTS.maxDailyLossUsd} reached. All actions paused until tomorrow.`,
     };
   }
+
   return { allowed: true };
 }
+
 // ============================================================
 // SOFT GUARDRAIL CHECKS
 // ============================================================
+
 export function needsApproval(
   action: string,
   params: Record<string, unknown>
@@ -128,6 +186,7 @@ export function needsApproval(
       reason: `Perps position requires confirmation: ${side.toUpperCase()} ${market} at ${leverage}x leverage, size $${sizeUsd}`,
     };
   }
+
   // Swaps and deposits over soft limit
   if (action === 'swapTokens') {
     const { amount } = params as { amount: number };
@@ -138,6 +197,7 @@ export function needsApproval(
       };
     }
   }
+
   if (action === 'depositLendle') {
     const { amount } = params as { amount: number };
     if (amount > GUARDRAIL_DEFAULTS.softMaxLendleDepositUsd) {
@@ -147,17 +207,22 @@ export function needsApproval(
       };
     }
   }
+
   return { required: false };
 }
+
 // ============================================================
 // POST-EXECUTION CIRCUIT BREAKERS
 // ============================================================
+
 export function postExecution(result: TxResult, lossUsd?: number) {
   const state = getCircuitBreakerState();
+
   if (!result.success) {
     // Track consecutive failures
     const newConsecutiveLosses = state.consecutiveLosses + 1;
     updateCircuitBreaker({ consecutiveLosses: newConsecutiveLosses });
+
     if (newConsecutiveLosses >= GUARDRAIL_DEFAULTS.maxConsecutiveLosses) {
       updateCircuitBreaker({
         isTripped: true,
@@ -170,10 +235,12 @@ export function postExecution(result: TxResult, lossUsd?: number) {
     if (state.consecutiveLosses > 0) {
       updateCircuitBreaker({ consecutiveLosses: 0 });
     }
+
     // Track P&L losses (if position was a loss)
     if (lossUsd && lossUsd > 0) {
       const newDailyLoss = state.dailyLossUsd + lossUsd;
       updateCircuitBreaker({ dailyLossUsd: newDailyLoss });
+
       if (newDailyLoss >= GUARDRAIL_DEFAULTS.maxDailyLossUsd) {
         updateCircuitBreaker({
           isTripped: true,
@@ -184,24 +251,31 @@ export function postExecution(result: TxResult, lossUsd?: number) {
     }
   }
 }
+
 // ============================================================
 // KILL SWITCH + RESET
 // ============================================================
+
 export function engageKillSwitch(reason = 'Manual kill switch engaged by user') {
   dbEngageKillSwitch(reason);
 }
+
 export function disengageKillSwitch() {
   dbResetCircuitBreaker();
 }
+
 export function resetCircuitBreaker() {
   dbResetCircuitBreaker();
 }
+
 export function getState() {
   return getCircuitBreakerState();
 }
+
 // ============================================================
 // GUARDRAIL STATUS SUMMARY (for UI display)
 // ============================================================
+
 export function getGuardrailStatus() {
   const state = getCircuitBreakerState();
   return {
