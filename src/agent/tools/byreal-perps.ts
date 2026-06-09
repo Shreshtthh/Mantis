@@ -1,8 +1,9 @@
 /**
- * Byreal Perps Integration — Full CLI Wrapper (v2)
+ * Byreal Perps Integration — Real CLI Wrapper (v3)
  *
- * Wraps the byreal-perps-cli with typed functions for all operations.
- * Every function has a simulation fallback for when the CLI isn't installed.
+ * Wraps @byreal-io/byreal-perps-cli v0.3.7 for Hyperliquid perpetual futures.
+ * Every function calls the real CLI. Simulation fallback for when CLI
+ * is unavailable (e.g., deployed environment without the binary).
  *
  * Functions:
  * - marketOrder(side, size, coin, tp?, sl?)
@@ -35,12 +36,16 @@ import type {
 const exec = promisify(execFile);
 
 // ============================================================
-// HELPER — run CLI with timeout + JSON parse
+// CLI HELPER
 // ============================================================
 
 const CLI_TIMEOUT_MS = 30_000;
 const CLI_NAME = 'byreal-perps-cli';
 
+/**
+ * Run CLI with timeout and JSON parsing.
+ * Global -o json goes BEFORE the command (this was the bug in v2).
+ */
 async function runCli(args: string[]): Promise<unknown> {
   try {
     const { stdout, stderr } = await exec(CLI_NAME, args, {
@@ -49,10 +54,11 @@ async function runCli(args: string[]): Promise<unknown> {
     if (stderr && stderr.length > 0) {
       console.warn(`[byreal-cli] stderr: ${stderr}`);
     }
+    const trimmed = stdout.trim();
     try {
-      return JSON.parse(stdout.trim());
+      return JSON.parse(trimmed);
     } catch {
-      return stdout.trim();
+      return trimmed;
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -60,21 +66,9 @@ async function runCli(args: string[]): Promise<unknown> {
   }
 }
 
-// ============================================================
-// MOCK PRICES for simulation
-// ============================================================
-
-const MOCK_PRICES: Record<string, number> = {
-  BTC: 100000,
-  ETH: 3500,
-  SOL: 170,
-  GOLD: 2650,
-  SILVER: 31,
-  OIL: 72,
-};
-
-function getMarketName(coin: string): string {
-  return `${coin}-PERP`;
+/** Build args with -o json as global flag */
+function jsonArgs(cmd: string[]): string[] {
+  return ['-o', 'json', ...cmd];
 }
 
 // ============================================================
@@ -88,32 +82,32 @@ export async function marketOrder(params: {
   tp?: number;
   sl?: number;
 }): Promise<PerpsPositionResult> {
-  const args = [
-    'order', 'market', params.side,
-    params.size.toString(), params.coin,
-    '-o', 'json',
-  ];
+  const side = params.side === 'buy' ? 'long' : 'short';
+  const args: string[] = ['order', 'market', side, params.size.toString(), params.coin];
   if (params.tp) args.push('--tp', params.tp.toString());
   if (params.sl) args.push('--sl', params.sl.toString());
 
   try {
-    const data = await runCli(args) as any;
-    if (data.error) return { success: false, error: data.error };
+    const data = (await runCli(jsonArgs(args))) as any;
+    if (data?.error) return { success: false, error: data.error };
     return {
       success: true,
-      txHash: (data.txHash ?? `perps-${Date.now()}`) as `0x${string}`,
+      txHash: (data?.txHash ?? `hyperliquid-${Date.now()}`) as `0x${string}`,
       data: {
-        positionId: data.positionId ?? data.id ?? `pos-${Date.now()}`,
-        market: getMarketName(params.coin),
+        positionId: data?.positionId ?? data?.oid ?? `pos-${Date.now()}`,
+        market: `${params.coin}-PERP`,
         side: params.side === 'buy' ? 'long' : 'short',
         sizeUsd: params.size,
-        leverage: data.leverage ?? 1,
-        entryPrice: data.entryPrice ?? 0,
-        liquidationPrice: data.liquidationPrice ?? 0,
+        leverage: data?.leverage ?? 1,
+        entryPrice: data?.entryPrice ?? data?.avgPx ?? 0,
+        liquidationPrice: data?.liquidationPrice ?? 0,
       },
     };
-  } catch {
-    return simulateMarketOrder(params);
+  } catch (err: any) {
+    if (err?.message?.includes('ENOENT') || err?.message?.includes('not found')) {
+      return simulateMarketOrder(params);
+    }
+    return { success: false, error: err.message };
   }
 }
 
@@ -125,35 +119,28 @@ export async function limitOrder(params: {
   tp?: number;
   sl?: number;
 }): Promise<TxResult> {
-  const args = [
-    'order', 'limit', params.side,
-    params.size.toString(), params.coin, params.price.toString(),
-    '-o', 'json',
-  ];
+  const side = params.side === 'buy' ? 'long' : 'short';
+  const args: string[] = ['order', 'limit', side, params.size.toString(), params.coin, params.price.toString()];
   if (params.tp) args.push('--tp', params.tp.toString());
   if (params.sl) args.push('--sl', params.sl.toString());
 
   try {
-    const data = await runCli(args) as any;
-    if (data.error) return { success: false, error: data.error };
+    const data = (await runCli(jsonArgs(args))) as any;
+    if (data?.error) return { success: false, error: data.error };
     return {
       success: true,
-      txHash: (data.txHash ?? `limit-${Date.now()}`) as `0x${string}`,
-      data: { orderId: data.orderId, coin: params.coin, side: params.side, price: params.price, size: params.size },
+      txHash: (data?.txHash ?? `limit-${Date.now()}`) as `0x${string}`,
+      data: { orderId: data?.oid ?? data?.orderId, coin: params.coin, side: params.side, price: params.price, size: params.size },
     };
-  } catch {
-    return {
-      success: true,
-      txHash: `0x${'aa'.repeat(32)}` as `0x${string}`,
-      data: {
-        orderId: `sim-limit-${Date.now()}`,
-        coin: params.coin,
-        side: params.side,
-        price: params.price,
-        size: params.size,
-        simulated: true,
-      },
-    };
+  } catch (err: any) {
+    if (err?.message?.includes('ENOENT')) {
+      return {
+        success: true,
+        txHash: `0x${'aa'.repeat(32)}` as `0x${string}`,
+        data: { orderId: `sim-limit-${Date.now()}`, coin: params.coin, side: params.side, price: params.price, size: params.size, simulated: true },
+      };
+    }
+    return { success: false, error: err.message };
   }
 }
 
@@ -162,15 +149,18 @@ export async function setTpSl(params: {
   tp?: number;
   sl?: number;
 }): Promise<TxResult> {
-  const args = ['position', 'tpsl', params.coin, '-o', 'json'];
+  const args = ['position', 'tpsl', params.coin];
   if (params.tp) args.push('--tp', params.tp.toString());
   if (params.sl) args.push('--sl', params.sl.toString());
 
   try {
-    const data = await runCli(args) as any;
+    const data = (await runCli(jsonArgs(args))) as any;
     return { success: true, data: { coin: params.coin, tp: params.tp, sl: params.sl, ...data } };
-  } catch {
-    return { success: true, data: { coin: params.coin, tp: params.tp, sl: params.sl, simulated: true } };
+  } catch (err: any) {
+    if (err?.message?.includes('ENOENT')) {
+      return { success: true, data: { coin: params.coin, tp: params.tp, sl: params.sl, simulated: true } };
+    }
+    return { success: false, error: err.message };
   }
 }
 
@@ -178,50 +168,47 @@ export async function setLeverage(params: {
   coin: string;
   leverage: number;
 }): Promise<TxResult> {
-  // Enforce max leverage at function level (defense in depth)
-  const clampedLeverage = Math.min(params.leverage, PERPS_CONFIG.maxLeverage);
-  const args = ['position', 'leverage', params.coin, clampedLeverage.toString(), '-o', 'json'];
-
+  const clamped = Math.min(params.leverage, PERPS_CONFIG.maxLeverage);
   try {
-    const data = await runCli(args) as any;
-    return { success: true, data: { coin: params.coin, leverage: clampedLeverage, ...data } };
-  } catch {
-    return { success: true, data: { coin: params.coin, leverage: clampedLeverage, simulated: true } };
+    const data = (await runCli(jsonArgs(['position', 'leverage', params.coin, clamped.toString()]))) as any;
+    return { success: true, data: { coin: params.coin, leverage: clamped, ...data } };
+  } catch (err: any) {
+    if (err?.message?.includes('ENOENT')) {
+      return { success: true, data: { coin: params.coin, leverage: clamped, simulated: true } };
+    }
+    return { success: false, error: err.message };
   }
 }
 
 export async function closeMarket(coin: string): Promise<TxResult> {
   try {
-    const data = await runCli(['position', 'close-market', coin, '-o', 'json']) as any;
-    return {
-      success: true,
-      txHash: (data.txHash ?? `close-${Date.now()}`) as `0x${string}`,
-      data: { coin, realizedPnl: data.realizedPnl ?? 0, ...data },
-    };
-  } catch {
-    return {
-      success: true,
-      txHash: `0x${'cc'.repeat(32)}` as `0x${string}`,
-      data: { coin, realizedPnl: 0, simulated: true },
-    };
+    const data = (await runCli(jsonArgs(['position', 'close-market', coin]))) as any;
+    return { success: true, txHash: (data?.txHash ?? `close-${Date.now()}`) as `0x${string}`, data: { coin, realizedPnl: data?.realizedPnl ?? 0, ...data } };
+  } catch (err: any) {
+    if (err?.message?.includes('ENOENT')) {
+      return { success: true, txHash: `0x${'cc'.repeat(32)}` as `0x${string}`, data: { coin, realizedPnl: 0, simulated: true } };
+    }
+    return { success: false, error: err.message };
   }
 }
 
 export async function cancelOrder(orderId: string): Promise<TxResult> {
   try {
-    const data = await runCli(['order', 'cancel', orderId, '-o', 'json']) as any;
+    const data = (await runCli(jsonArgs(['order', 'cancel', orderId]))) as any;
     return { success: true, data: { orderId, ...data } };
-  } catch {
-    return { success: true, data: { orderId, simulated: true } };
+  } catch (err: any) {
+    if (err?.message?.includes('ENOENT')) return { success: true, data: { orderId, simulated: true } };
+    return { success: false, error: err.message };
   }
 }
 
 export async function cancelAll(): Promise<TxResult> {
   try {
-    const data = await runCli(['order', 'cancel-all', '-y', '-o', 'json']) as any;
-    return { success: true, data: { cancelledCount: data.count ?? 0, ...data } };
-  } catch {
-    return { success: true, data: { cancelledCount: 0, simulated: true } };
+    const data = (await runCli(jsonArgs(['order', 'cancel-all', '-y']))) as any;
+    return { success: true, data: { cancelledCount: data?.count ?? 0, ...data } };
+  } catch (err: any) {
+    if (err?.message?.includes('ENOENT')) return { success: true, data: { cancelledCount: 0, simulated: true } };
+    return { success: false, error: err.message };
   }
 }
 
@@ -231,54 +218,52 @@ export async function cancelAll(): Promise<TxResult> {
 
 export async function listOrders(): Promise<PerpsOrder[]> {
   try {
-    const data = await runCli(['order', 'list', '-o', 'json']) as any;
-    const orders = Array.isArray(data) ? data : data.orders ?? [];
-    return orders;
-  } catch {
-    return []; // No open orders (or CLI not installed)
-  }
-}
-
-export async function listPositions(): Promise<PerpsPosition[]> {
-  try {
-    const data = await runCli(['position', 'list', '-o', 'json']) as any;
-    const positions = Array.isArray(data) ? data : data.positions ?? [];
-    return positions;
+    const data = (await runCli(jsonArgs(['order', 'list']))) as any;
+    return Array.isArray(data) ? data : data?.orders ?? [];
   } catch {
     return [];
   }
 }
 
+export async function listPositions(): Promise<PerpsPosition[]> {
+  try {
+    const data = (await runCli(jsonArgs(['position', 'list']))) as any;
+    return Array.isArray(data) ? data : data?.positions ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Hyperliquid perps account info */
 export interface ByRealAccount {
   address: string;
-  solBalance: number;
-  usdcBalance: number;
+  margin: number;
+  equity: number;
   unrealizedPnl: number;
-  totalPortfolioValue: number;
+  leverage: number;
 }
 
 export async function getAccountInfo(): Promise<ByRealAccount | null> {
   try {
-    const data = await runCli(['account', 'info', '-o', 'json']) as any;
+    const data = (await runCli(jsonArgs(['account', 'info']))) as any;
     return {
-      address: data.address ?? data.walletAddress ?? 'unknown',
-      solBalance: data.solBalance ?? data.sol ?? 0,
-      usdcBalance: data.usdcBalance ?? data.usdc ?? 0,
-      unrealizedPnl: data.unrealizedPnl ?? data.pnl ?? 0,
-      totalPortfolioValue: data.totalPortfolioValue ?? 0,
+      address: data?.address ?? data?.wallet ?? 'unknown',
+      margin: data?.margin ?? data?.collateral ?? 0,
+      equity: data?.equity ?? data?.accountValue ?? 0,
+      unrealizedPnl: data?.unrealizedPnl ?? data?.pnl ?? 0,
+      leverage: data?.leverage ?? data?.userLeverage ?? 1,
     };
   } catch {
     return null;
   }
 }
 
-// Legacy alias for backward compat
 export const getAccount = getAccountInfo;
 
 export async function getHistory(): Promise<unknown[]> {
   try {
-    const data = await runCli(['account', 'history', '-o', 'json']) as any;
-    return Array.isArray(data) ? data : data.history ?? [];
+    const data = (await runCli(jsonArgs(['account', 'history']))) as any;
+    return Array.isArray(data) ? data : data?.history ?? data?.fills ?? [];
   } catch {
     return [];
   }
@@ -290,25 +275,24 @@ export async function getHistory(): Promise<unknown[]> {
 
 export async function scanSignals(): Promise<MarketSignal[]> {
   try {
-    const data = await runCli(['signal', 'scan', '-o', 'json']) as any;
-    return Array.isArray(data) ? data : data.signals ?? [];
+    const data = (await runCli(jsonArgs(['signal', 'scan']))) as any;
+    return Array.isArray(data) ? data : data?.signals ?? data?.results ?? [];
   } catch {
-    // Simulation fallback — realistic mock signals
     return simulateScanSignals();
   }
 }
 
 export async function signalDetail(coin: string): Promise<SignalDetail | null> {
   try {
-    const data = await runCli(['signal', 'detail', coin, '-o', 'json']) as any;
-    return data;
+    const data = (await runCli(jsonArgs(['signal', 'detail', coin]))) as any;
+    return data ?? null;
   } catch {
     return simulateSignalDetail(coin);
   }
 }
 
 // ============================================================
-// LEGACY COMPAT — old function signatures still work
+// LEGACY COMPAT
 // ============================================================
 
 export async function openPosition(params: {
@@ -320,21 +304,16 @@ export async function openPosition(params: {
   takeProfitPercent?: number;
 }): Promise<PerpsPositionResult> {
   const coin = params.market.replace('-PERP', '');
-  const price = MOCK_PRICES[coin] ?? 100;
-  const tp = params.takeProfitPercent ? price * (1 + params.takeProfitPercent / 100) : undefined;
-  const sl = params.stopLossPercent ? price * (1 - params.stopLossPercent / 100) : undefined;
-
   return marketOrder({
     side: params.side === 'long' ? 'buy' : 'sell',
     size: params.sizeUsd,
     coin,
-    tp,
-    sl,
+    tp: params.takeProfitPercent,
+    sl: params.stopLossPercent,
   });
 }
 
 export async function closePosition(positionId: string): Promise<TxResult> {
-  // Try to extract coin from position ID; fallback to close by ID
   return closeMarket(positionId);
 }
 
@@ -347,7 +326,7 @@ export async function getMarketInfo(market: string) {
   const detail = await signalDetail(coin);
   return {
     market,
-    markPrice: detail?.indicators?.vwap ?? MOCK_PRICES[coin] ?? 0,
+    markPrice: detail?.indicators?.vwap ?? 0,
     fundingRate: detail?.fundingRate ?? 0,
     openInterestLong: detail?.openInterest ?? 0,
     openInterestShort: 0,
@@ -359,32 +338,27 @@ export async function getMarketInfo(market: string) {
 // SIMULATION FALLBACKS
 // ============================================================
 
+const MOCK_PRICES: Record<string, number> = {
+  BTC: 100000, ETH: 3500, SOL: 170,
+  GOLD: 2650, SILVER: 31, OIL: 72,
+};
+
 function simulateMarketOrder(params: {
-  side: 'buy' | 'sell';
-  size: number;
-  coin: string;
-  tp?: number;
-  sl?: number;
+  side: 'buy' | 'sell'; size: number; coin: string; tp?: number; sl?: number;
 }): PerpsPositionResult {
   const entryPrice = MOCK_PRICES[params.coin] ?? 100;
-  const leverage = 1;
-  const liquidationDistance = entryPrice / 5; // assume 5x
-  const liquidationPrice = params.side === 'buy'
-    ? entryPrice - liquidationDistance * 0.9
-    : entryPrice + liquidationDistance * 0.9;
-
   return {
     success: true,
     txHash: `0x${'12'.repeat(32)}` as `0x${string}`,
     explorerUrl: '#',
     data: {
       positionId: `sim-pos-${Date.now()}`,
-      market: getMarketName(params.coin),
+      market: `${params.coin}-PERP`,
       side: params.side === 'buy' ? 'long' : 'short',
       sizeUsd: params.size,
-      leverage,
+      leverage: 1,
       entryPrice,
-      liquidationPrice,
+      liquidationPrice: entryPrice * 0.8,
     },
   };
 }
@@ -392,33 +366,9 @@ function simulateMarketOrder(params: {
 function simulateScanSignals(): MarketSignal[] {
   const now = new Date().toISOString();
   return [
-    {
-      coin: 'BTC',
-      signal: 'bullish',
-      strength: 72,
-      fundingRate: -0.0032,
-      priceChange24h: 2.4,
-      volume24h: 1_200_000_000,
-      timestamp: now,
-    },
-    {
-      coin: 'ETH',
-      signal: 'neutral',
-      strength: 48,
-      fundingRate: 0.0015,
-      priceChange24h: -0.8,
-      volume24h: 800_000_000,
-      timestamp: now,
-    },
-    {
-      coin: 'SOL',
-      signal: 'bullish',
-      strength: 65,
-      fundingRate: -0.0018,
-      priceChange24h: 4.2,
-      volume24h: 450_000_000,
-      timestamp: now,
-    },
+    { coin: 'BTC', signal: 'bullish', strength: 72, fundingRate: -0.0032, priceChange24h: 2.4, volume24h: 1_200_000_000, timestamp: now },
+    { coin: 'ETH', signal: 'neutral', strength: 48, fundingRate: 0.0015, priceChange24h: -0.8, volume24h: 800_000_000, timestamp: now },
+    { coin: 'SOL', signal: 'bullish', strength: 65, fundingRate: -0.0018, priceChange24h: 4.2, volume24h: 450_000_000, timestamp: now },
   ];
 }
 
