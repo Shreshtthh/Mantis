@@ -91,7 +91,8 @@ function compileContract(filename: string): { abi: any; bytecode: string } {
       outputSelection: {
         "*": { "*": ["abi", "evm.bytecode.object"] },
       },
-      optimizer: { enabled: true, runs: 200 },
+      optimizer: { enabled: true, runs: 200, details: { yul: true } },
+      viaIR: true,
     },
   };
 
@@ -120,6 +121,7 @@ function compileContract(filename: string): { abi: any; bytecode: string } {
 
 // ABI encoding for constructor args
 function encodeConstructorArgs(types: string, values: any[]): string {
+  if (!types || values.length === 0) return "";
   // Strip 0x prefix from encoded data
   return encodeAbiParameters(parseAbiParameters(types), values).slice(2);
 }
@@ -223,6 +225,61 @@ async function main() {
 
   console.log();
 
+  // ---- 4. Deploy MockSwapRouter ----
+  console.log("── Deploying MockSwapRouter ──\n");
+
+  const mockRouterAddr = await deployContract("MockSwapRouter", "MockSwapRouter.sol", "", []);
+
+  // Set exchange rates for common pairs
+  const RATE_1E18 = 10n ** 18n;
+  const USDC = tokenAddrs["tUSDC"] as `0x${string}`;
+  const WETH = tokenAddrs["tWETH"] as `0x${string}`;
+  const mETH = tokenAddrs["tmETH"] as `0x${string}`;
+  const WMNT = tokenAddrs["tWMNT"] as `0x${string}`;
+
+  // encode setRate: keccak("setRate(address,address,uint256)") = 0x7b7c6e1a
+  const setRateSelector = "0x5911fb9a";
+
+  async function setRate(tokenA: string, tokenB: string, rateAtoB: bigint) {
+    const data = (setRateSelector +
+      tokenA.slice(2).padStart(64, "0") +
+      tokenB.slice(2).padStart(64, "0") +
+      rateAtoB.toString(16).padStart(64, "0")) as `0x${string}`;
+    await sendTx(mockRouterAddr, data, `Set rate ${tokenA.slice(0,6)}… → ${tokenB.slice(0,6)}…`);
+  }
+
+  // USDC/WMNT: 1 USDC ≈ 1.25 WMNT (at $0.80/MNT)
+  await setRate(USDC, WMNT, (RATE_1E18 * 125n) / 100n);
+  // USDC/WETH: 1 WETH ≈ 2500 USDC
+  await setRate(WETH, USDC, RATE_1E18 * 2500n);
+  // USDC/mETH: 1 mETH ≈ 2600 USDC
+  await setRate(mETH, USDC, RATE_1E18 * 2600n);
+  // mETH/WETH: ~1.04 (mETH slightly higher)
+  await setRate(mETH, WETH, (RATE_1E18 * 104n) / 100n);
+
+  console.log();
+
+  // ---- 5. Deploy MockLendingPool ----
+  console.log("── Deploying MockLendingPool ──\n");
+
+  const mockLendleAddr = await deployContract("MockLendingPool", "MockLendingPool.sol", "", []);
+
+  // Set APYs for each token
+  const setSupplyApySelector = "0x97bb778a"; // keccak("setSupplyApy(address,uint256)")
+  const APY_BPS: Record<string, number> = {
+    [USDC]: 620, [tokenAddrs["tUSDT"]]: 580, [WETH]: 280,
+    [mETH]: 310, [WMNT]: 450,
+  };
+
+  for (const [token, bps] of Object.entries(APY_BPS)) {
+    const data = (setSupplyApySelector +
+      token.slice(2).padStart(64, "0") +
+      BigInt(bps).toString(16).padStart(64, "0")) as `0x${string}`;
+    await sendTx(mockLendleAddr, data, `Set APY ${bps / 100}% for ${token.slice(0,6)}…`);
+  }
+
+  console.log();
+
   // ---- Summary ----
   console.log("=".repeat(60));
   console.log("  📋 DEPLOYMENT SUMMARY");
@@ -233,7 +290,9 @@ async function main() {
   for (const [sym, addr] of Object.entries(tokenAddrs)) {
     console.log(`    ${sym.padEnd(8)} ${addr}`);
   }
-  console.log(`\n  AgentVault:  ${vaultAddr}`);
+  console.log(`\n  AgentVault:       ${vaultAddr}`);
+  console.log(`  MockSwapRouter:   ${mockRouterAddr}`);
+  console.log(`  MockLendingPool:  ${mockLendleAddr}`);
   console.log();
   console.log("  ── Copy into src/agent/config.ts ──");
   console.log();
@@ -244,6 +303,10 @@ async function main() {
   console.log(`    WETH: '${tokenAddrs["tWETH"]}' as \`0x\${string}\`,`);
   console.log(`    mETH: '${tokenAddrs["tmETH"]}' as \`0x\${string}\`,`);
   console.log("  } as const;");
+  console.log();
+  console.log("  // In TESTNET_CONTRACTS, update:");
+  console.log(`  merchantMoeRouter: '${mockRouterAddr}' as \`0x\${string}\`,`);
+  console.log(`  lendlePool:        '${mockLendleAddr}' as \`0x\${string}\`,`);
 
   // Save to file for reference
   const summary = {
@@ -252,6 +315,8 @@ async function main() {
     deployer: account.address,
     tokens: tokenAddrs,
     agentVault: vaultAddr,
+    mockSwapRouter: mockRouterAddr,
+    mockLendingPool: mockLendleAddr,
     deployedAt: new Date().toISOString(),
   };
   writeFileSync(join(OUTPUT_DIR, "deployed.json"), JSON.stringify(summary, null, 2));
