@@ -11,7 +11,7 @@
  * - getUserPositions(address) — active lending positions
  */
 
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits, formatUnits, encodeFunctionData } from 'viem';
 import { getMantleWallet, mantlePublic, txUrl } from '@/lib/mantle';
 import {
   ERC20_ABI,
@@ -214,6 +214,60 @@ export async function getUserPositions(address: `0x${string}`): Promise<LendlePo
 // ============================================================
 // HELPERS
 // ============================================================
+
+/**
+ * Encode Lendle deposit calldata for vault execution.
+ */
+export function encodeLendleDepositData(params: {
+  token: string;
+  amount: number;
+  onBehalfOf: `0x${string}`; // vault address
+}): `0x${string}` {
+  const tokenAddress = TOKENS[params.token as keyof typeof TOKENS];
+  const decimals = TOKEN_DECIMALS[params.token] ?? 18;
+  const amountWei = parseUnits(params.amount.toString(), decimals);
+  const poolAbi = NETWORK === 'mainnet' ? LENDLE_POOL_ABI : MOCK_LENDING_POOL_ABI;
+
+  return encodeFunctionData({
+    abi: poolAbi as any,
+    functionName: 'deposit',
+    args: [tokenAddress, amountWei, params.onBehalfOf, 0],
+  });
+}
+
+/**
+ * Encode Lendle withdraw calldata for vault execution.
+ */
+export function encodeLendleWithdrawData(params: {
+  token: string;
+  amount: number;
+  to: `0x${string}`; // vault address (or user if direct)
+}): `0x${string}` {
+  const tokenAddress = TOKENS[params.token as keyof typeof TOKENS];
+  const decimals = TOKEN_DECIMALS[params.token] ?? 18;
+  const amountWei = parseUnits(params.amount.toString(), decimals);
+  const poolAbi = NETWORK === 'mainnet' ? LENDLE_POOL_ABI : MOCK_LENDING_POOL_ABI;
+
+  return encodeFunctionData({
+    abi: poolAbi as any,
+    functionName: 'withdraw',
+    args: [tokenAddress, amountWei, params.to],
+  });
+}
+
+/**
+ * Encode ERC-20 approve for vault execution (Lendle version).
+ */
+export function encodeLendleApproveData(
+  spender: `0x${string}`,
+  amount: bigint
+): `0x${string}` {
+  return encodeFunctionData({
+    abi: ERC20_ABI as any,
+    functionName: 'approve',
+    args: [spender, amount],
+  });
+}
 
 function simulateDeposit(params: { token: string; amount: number }): LendleDepositResult {
   const rates = MOCK_RATES[params.token] ?? { supplyApy: 3.0 };
