@@ -26,11 +26,11 @@ const MAINNET_TOKENS = {
 // Testnet tokens are MockERC20 contracts deployed by us on Mantle Sepolia.
 // Addresses are populated after mock contract deployment (Phase 1 Day 1).
 const TESTNET_TOKENS = {
-  WMNT: '0xb3666A3515673EF9D72BAce59c279a960FAd4cb5' as `0x${string}`,
-  USDC: '0xEf33F337bBF199cB0e9b6bdFCDd18321595E510e' as `0x${string}`,
-  USDT: '0x8e388841c3EbBacCeD7294E99D883cDA5a365eb8' as `0x${string}`,
-  WETH: '0x04933256dfD097c5BB9cC2bAEf6841461E691B5e' as `0x${string}`,
-  mETH: '0x27C880836D63ED6d786c86ec465DFAf356E7B8f5' as `0x${string}`,
+  WMNT: '0x91C0eBe211095F213ebE899662dE99Fe38f542d9' as `0x${string}`,
+  USDC: '0x207Efefb16e7Dd9B395E4aCd6fEa7046b80995F6' as `0x${string}`,
+  USDT: '0x36a5927B95B7ed104aD1F81Bb23b274bAB40945e' as `0x${string}`,
+  WETH: '0xdD4FbDF97d4Ff3CB19D7D22562845f9f7084CFeD' as `0x${string}`,
+  mETH: '0x8b298654063c4BB76ADea8584B2277A170878613' as `0x${string}`,
 } as const;
 // ============================================================
 // PROTOCOL CONTRACT ADDRESSES
@@ -49,9 +49,9 @@ const MAINNET_CONTRACTS = {
 } as const;
 const TESTNET_CONTRACTS = {
   // Deployed contracts on Mantle Sepolia
-  agentVault: '0x8533C45FE0686fD32b290dCe4be92FE54b6808d6' as `0x${string}`,
-  merchantMoeRouter: '0x0000000000000000000000000000000000000000' as `0x${string}`, // MockRouter (TODO: deploy mock)
-  lendlePool: '0x0000000000000000000000000000000000000000' as `0x${string}`,        // MockLendingPool (TODO: deploy mock)
+  agentVault: '0xA0a402A3e9C7Cee0CA45911D9BA2673b53140659' as `0x${string}`,
+  merchantMoeRouter: '0x3B38E69728798BF5239D13654ca63e9ad3885A44' as `0x${string}`,
+  lendlePool:        '0x7C165db385c4cd4f1355b916aF7Ec33eA06317E9' as `0x${string}`,
   lendleDataProvider: '0x0000000000000000000000000000000000000000' as `0x${string}`,// MockDataProvider (TODO: deploy mock)
   // ERC-8004 Registries (same addresses — they may be on mainnet only; reads will fallback gracefully)
   erc8004Identity: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' as `0x${string}`,
