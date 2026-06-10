@@ -14,11 +14,6 @@ import { getMantleWallet, mantlePublic, getAgentAddress } from '@/lib/mantle';
 import { ERC20_ABI, TOKENS } from '@/lib/contracts';
 import { config } from './config';
 import type { WalletBalance, TokenBalance } from '@/lib/types';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(execFile);
-
 // ============================================================
 // MANTLE TREASURY (EVM)
 // ============================================================
@@ -160,43 +155,25 @@ export async function ensureApproval(
 }
 
 // ============================================================
-// SOLANA TREASURY (Byreal CLI)
+// BYREAL PERPS ACCOUNT (Hyperliquid)
 // ============================================================
 
+import { getAccountInfo as getByrealAccount } from '@/agent/tools/byreal-perps';
+
 /**
- * Get Solana/Byreal treasury balance via CLI.
- * Returns null if Byreal CLI is not installed or not configured.
+ * Get Byreal Hyperliquid perps account portfolio.
+ * Returns null if CLI not installed or account not configured.
  */
-export async function getSolanaBalance(): Promise<{
+async function getByrealPortfolio(): Promise<{
   address: string;
-  solBalance: number;
-  usdcBalance: number;
-  totalValueUsd: number;
+  margin: number;
+  equity: number;
+  unrealizedPnl: number;
+  leverage: number;
 } | null> {
   try {
-    const { stdout } = await execAsync('byreal-perps-cli', ['account', 'info', '--json']);
-    const data = JSON.parse(stdout) as {
-      address?: string;
-      walletAddress?: string;
-      sol?: number;
-      solBalance?: number;
-      usdc?: number;
-      usdcBalance?: number;
-    };
-
-    const prices = await getTokenPrices(['SOL', 'USDC']);
-
-    const solBalance = data.sol ?? data.solBalance ?? 0;
-    const usdcBalance = data.usdc ?? data.usdcBalance ?? 0;
-
-    return {
-      address: data.address ?? data.walletAddress ?? 'unknown',
-      solBalance,
-      usdcBalance,
-      totalValueUsd: solBalance * (prices.SOL ?? 0) + usdcBalance * (prices.USDC ?? 1),
-    };
+    return await getByrealAccount();
   } catch {
-    // Byreal CLI not installed or wallet not configured yet
     return null;
   }
 }
@@ -206,14 +183,14 @@ export async function getSolanaBalance(): Promise<{
 // ============================================================
 
 export async function getWalletBalance(): Promise<WalletBalance> {
-  const [mantleTreasury, solanaTreasury] = await Promise.all([
+  const [mantleTreasury, byrealAccount] = await Promise.all([
     getMantleBalance(),
-    getSolanaBalance(),
+    getByrealPortfolio(),
   ]);
 
   return {
     mantleTreasury,
-    solanaTreasury: solanaTreasury ?? undefined,
+    byrealAccount: byrealAccount ?? undefined,
   };
 }
 
