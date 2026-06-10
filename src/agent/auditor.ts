@@ -17,6 +17,21 @@ import { submitValidation } from './tools/erc8004';
 import { AGENT_IDENTITY, NETWORK } from './config';
 import type { AuditEntry, TxResult } from '@/lib/types';
 
+/**
+ * Extract plain text from content, which may be a string or an array of parts.
+ */
+function extractTextContent(content: string | Array<{ type: string; text?: string }> | undefined): string {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .filter((p): p is { type: 'text'; text: string } => p.type === 'text' && typeof p.text === 'string')
+      .map((p) => p.text)
+      .join('');
+  }
+  return '';
+}
+
 // ============================================================
 // MAIN AUDIT FUNCTION
 // ============================================================
@@ -28,7 +43,7 @@ export async function audit(params: {
   action: string;
   actionParams: Record<string, unknown>;
   result: TxResult;
-  messages: Array<{ role: string; content: string }>;
+  messages: Array<{ role: string; content: string | Array<{ type: string; text?: string }> }>;
   guardrailChecks?: Record<string, boolean>;
 }): Promise<{
   ipfsCid: string;
@@ -40,7 +55,7 @@ export async function audit(params: {
     const entry: AuditEntry = {
       timestamp: new Date().toISOString(),
       action: params.action,
-      userPrompt: params.messages[params.messages.length - 1]?.content ?? '',
+      userPrompt: extractTextContent(params.messages[params.messages.length - 1]?.content),
       agentReasoning: `Executed ${params.action} with params: ${JSON.stringify(params.actionParams)}`,
       guardrailChecks: params.guardrailChecks ?? {
         tokenApproved: true,
