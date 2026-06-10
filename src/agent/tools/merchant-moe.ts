@@ -9,7 +9,7 @@
  * - swapTokens(params) — execute a swap, return tx hash
  */
 
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits, formatUnits, encodeFunctionData } from 'viem';
 import { getMantleWallet, mantlePublic, txUrl } from '@/lib/mantle';
 import {
   ERC20_ABI,
@@ -159,6 +159,53 @@ function getMockExchangeRate(tokenIn: string, tokenOut: string): number {
   const priceIn = prices[tokenIn] ?? 1;
   const priceOut = prices[tokenOut] ?? 1;
   return priceIn / priceOut;
+}
+
+/**
+ * Encode swapExactTokensForTokens calldata for vault execution.
+ * This encodes the function call but does NOT submit it — the vault
+ * will call this as the `data` parameter to vault.execute().
+ */
+export function encodeSwapData(params: {
+  tokenIn: string;
+  tokenOut: string;
+  amount: number;
+  slippagePercent?: number;
+  recipient: `0x${string}`; // Who receives the output tokens (vault address)
+}): `0x${string}` {
+  const tokenInAddress = TOKENS[params.tokenIn as keyof typeof TOKENS];
+  const tokenOutAddress = TOKENS[params.tokenOut as keyof typeof TOKENS];
+  const decimalsIn = TOKEN_DECIMALS[params.tokenIn] ?? 18;
+  const decimalsOut = TOKEN_DECIMALS[params.tokenOut] ?? 18;
+  const slippage = params.slippagePercent ?? 1;
+
+  const amountInWei = parseUnits(params.amount.toString(), decimalsIn);
+  const estimatedOut = params.amount * getMockExchangeRate(params.tokenIn, params.tokenOut);
+  const expectedOutWei = parseUnits(estimatedOut.toFixed(decimalsOut), decimalsOut);
+  const minOut = (expectedOutWei * BigInt(Math.floor((100 - slippage) * 100))) / 10000n;
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 min
+
+  const routerAbi = NETWORK === 'mainnet' ? MOE_ROUTER_ABI : MOCK_ROUTER_ABI;
+
+  return encodeFunctionData({
+    abi: routerAbi as any,
+    functionName: 'swapExactTokensForTokens',
+    args: [amountInWei, minOut, [tokenInAddress, tokenOutAddress], params.recipient, deadline],
+  });
+}
+
+/**
+ * Encode ERC-20 approve calldata (used as a prerequisite vault call).
+ */
+export function encodeApproveData(
+  spender: `0x${string}`,
+  amount: bigint
+): `0x${string}` {
+  return encodeFunctionData({
+    abi: ERC20_ABI as any,
+    functionName: 'approve',
+    args: [spender, amount],
+  });
 }
 
 function simulateSwap(params: {
