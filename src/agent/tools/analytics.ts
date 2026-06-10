@@ -102,7 +102,7 @@ export async function getPortfolio(): Promise<Portfolio> {
   const lendleValueUsd = lendle.reduce((sum: number, p: LendlePosition) => sum + p.valueUsd, 0);
   const perpsValueUsd = perps.reduce((sum: number, p: PerpsPosition) => sum + p.sizeUsd, 0);
   const perpsPnlUsd = perps.reduce((sum: number, p: PerpsPosition) => sum + p.unrealizedPnlUsd, 0);
-  const byRealTotalUsd = byreal?.totalPortfolioValue ?? 0;
+  const byRealTotalUsd = byreal?.equity ?? 0;
 
   const totalValueUsd = mantleData.totalValueUsd + lendleValueUsd + byRealTotalUsd;
   const totalPnlUsd = perpsPnlUsd + (byreal?.unrealizedPnl ?? 0);
@@ -110,12 +110,13 @@ export async function getPortfolio(): Promise<Portfolio> {
   return {
     wallet: {
       mantleTreasury: mantleData,
-      solanaTreasury: byreal
+      byrealAccount: byreal
         ? {
             address: byreal.address,
-            solBalance: byreal.solBalance,
-            usdcBalance: byreal.usdcBalance,
-            totalValueUsd: byreal.totalPortfolioValue,
+            margin: byreal.margin,
+            equity: byreal.equity,
+            unrealizedPnl: byreal.unrealizedPnl,
+            leverage: byreal.leverage,
           }
         : undefined,
     },
