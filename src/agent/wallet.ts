@@ -12,7 +12,7 @@
 import { formatUnits } from 'viem';
 import { getMantleWallet, mantlePublic, getAgentAddress } from '@/lib/mantle';
 import { ERC20_ABI, TOKENS } from '@/lib/contracts';
-import { config } from './config';
+import { config, NETWORK } from './config';
 import type { WalletBalance, TokenBalance } from '@/lib/types';
 // ============================================================
 // MANTLE TREASURY (EVM)
@@ -54,17 +54,26 @@ export async function getMantleBalance(): Promise<{
   let balanceResults: bigint[] = [];
   let decimalsResults: number[] = [];
 
+  // Multicall3 is not deployed on Mantle Sepolia. On testnet, skip
+  // the multicall entirely and go straight to individual reads.
+  const useMulticall = NETWORK !== 'testnet';
+
   if (balanceCalls.length > 0) {
-    try {
-      const [balances, decimals] = await Promise.all([
-        mantlePublic.multicall({ contracts: balanceCalls }),
-        mantlePublic.multicall({ contracts: decimalsCalls }),
-      ]);
-      balanceResults = balances.map((r) => (r.status === 'success' ? (r.result as bigint) : 0n));
-      decimalsResults = decimals.map((r) => (r.status === 'success' ? (r.result as number) : 18));
-    } catch {
-      // Multicall not available on testnet — fall back to individual readContract calls
-      console.warn('[wallet] multicall failed, falling back to individual calls');
+    let multicallOk = false;
+    if (useMulticall) {
+      try {
+        const [balances, decimals] = await Promise.all([
+          mantlePublic.multicall({ contracts: balanceCalls }),
+          mantlePublic.multicall({ contracts: decimalsCalls }),
+        ]);
+        balanceResults = balances.map((r) => (r.status === 'success' ? (r.result as bigint) : 0n));
+        decimalsResults = decimals.map((r) => (r.status === 'success' ? (r.result as number) : 18));
+        multicallOk = true;
+      } catch {
+        console.warn('[wallet] multicall failed, falling back to individual calls');
+      }
+    }
+    if (!multicallOk) {
       for (const [i, [symbol, tokenAddress]] of tokenEntries.entries()) {
         try {
           const bal = await mantlePublic.readContract({
@@ -211,7 +220,8 @@ const COINGECKO_IDS: Record<string, string> = {
 };
 
 let _priceCache: { prices: Record<string, number>; fetchedAt: number } | null = null;
-const PRICE_CACHE_TTL_MS = 30_000; // 30 seconds
+const PRICE_CACHE_TTL_MS = 5 * 60_000; // 5 minutes — avoids hammering CoinGecko
+const FETCH_TIMEOUT_MS = 3_000;        // 3-second timeout — fail fast, use fallbacks
 
 export async function getTokenPrices(symbols: string[]): Promise<Record<string, number>> {
   const now = Date.now();
@@ -232,10 +242,15 @@ export async function getTokenPrices(symbols: string[]): Promise<Record<string, 
     const headers: Record<string, string> = { 'Accept': 'application/json' };
     if (apiKey) headers['x-cg-demo-api-key'] = apiKey;
 
+    // AbortController with timeout — CoinGecko can hang behind some networks
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
     const res = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd`,
-      { headers, next: { revalidate: 30 } }
+      { headers, signal: controller.signal, cache: 'no-store' }
     );
+    clearTimeout(timeout);
 
     if (!res.ok) {
       throw new Error(`CoinGecko API error: ${res.status}`);
@@ -258,17 +273,19 @@ export async function getTokenPrices(symbols: string[]): Promise<Record<string, 
     _priceCache = { prices, fetchedAt: now };
     return prices;
   } catch {
-    // Return fallback prices if CoinGecko is down
-    return {
-      MNT: 0.8,
-      WMNT: 0.8,
-      USDC: 1,
-      USDT: 1,
-      WETH: 2500,
-      mETH: 2600,
-      SOL: 150,
-      BTC: 60000,
-      ETH: 2500,
+    // CoinGecko unreachable — use cached prices if available, otherwise fallbacks.
+    // On failure, extend the cache TTL so we don't retry on every request.
+    if (_priceCache) {
+      _priceCache.fetchedAt = now; // bump TTL — don't retry for another 5 min
+      return _priceCache.prices;
+    }
+
+    // First-ever fetch and already failing — return hardcoded fallbacks
+    const fallbacks: Record<string, number> = {
+      MNT: 0.8, WMNT: 0.8, USDC: 1, USDT: 1,
+      WETH: 2500, mETH: 2600, SOL: 150, BTC: 60000, ETH: 2500,
     };
+    _priceCache = { prices: fallbacks, fetchedAt: now };
+    return fallbacks;
   }
 }
