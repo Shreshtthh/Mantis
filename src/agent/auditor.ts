@@ -106,10 +106,11 @@ export async function audit(params: {
 export async function pinToIPFS(content: string): Promise<string> {
   const jwt = process.env.PINATA_JWT;
 
-  if (!jwt) {
-    // Return a mock CID for local dev / testnet without Pinata configured
+  if (!jwt || jwt.startsWith('your_') || jwt === 'placeholder') {
+    // Return a mock CID for local dev / testnet without Pinata configured.
+    // Also catches placeholder values like "your_pinata_jwt_here".
     const hash = createHash('sha256').update(content).digest('hex');
-    return `bafyrei${hash.slice(0, 46)}`; // plausible-looking CID
+    return `bafyrei${hash.slice(0, 46)}`;
   }
 
   const res = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
