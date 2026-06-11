@@ -165,27 +165,42 @@ function getMockExchangeRate(tokenIn: string, tokenOut: string): number {
  * Encode swapExactTokensForTokens calldata for vault execution.
  * This encodes the function call but does NOT submit it — the vault
  * will call this as the `data` parameter to vault.execute().
+ *
+ * Queries the router's getAmountsOut on-chain to compute minOut,
+ * ensuring the minOut always matches what the router will actually
+ * return (avoids INSUFFICIENT_OUTPUT_AMOUNT reverts).
  */
-export function encodeSwapData(params: {
+export async function encodeSwapData(params: {
   tokenIn: string;
   tokenOut: string;
   amount: number;
   slippagePercent?: number;
   recipient: `0x${string}`; // Who receives the output tokens (vault address)
-}): `0x${string}` {
+}): Promise<`0x${string}`> {
   const tokenInAddress = TOKENS[params.tokenIn as keyof typeof TOKENS];
   const tokenOutAddress = TOKENS[params.tokenOut as keyof typeof TOKENS];
   const decimalsIn = TOKEN_DECIMALS[params.tokenIn] ?? 18;
-  const decimalsOut = TOKEN_DECIMALS[params.tokenOut] ?? 18;
   const slippage = params.slippagePercent ?? 1;
 
   const amountInWei = parseUnits(params.amount.toString(), decimalsIn);
-  const estimatedOut = params.amount * getMockExchangeRate(params.tokenIn, params.tokenOut);
-  const expectedOutWei = parseUnits(estimatedOut.toFixed(decimalsOut), decimalsOut);
-  const minOut = (expectedOutWei * BigInt(Math.floor((100 - slippage) * 100))) / 10000n;
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 min
-
+  const path: `0x${string}`[] = [tokenInAddress, tokenOutAddress];
+  const routerAddress = CONTRACTS.merchantMoeRouter;
   const routerAbi = NETWORK === 'mainnet' ? MOE_ROUTER_ABI : MOCK_ROUTER_ABI;
+
+  // Query the router for the actual expected output amount.
+  // This uses the same formula as swapExactTokensForTokens internally,
+  // so the minOut check will always pass (modulo slippage).
+  const amounts = await mantlePublic.readContract({
+    address: routerAddress,
+    abi: routerAbi,
+    functionName: 'getAmountsOut',
+    args: [amountInWei, path],
+  }) as bigint[];
+
+  const expectedOut = amounts[amounts.length - 1];
+  // Apply slippage: minOut = expectedOut * (100 - slippage%) / 100
+  const minOut = (expectedOut * BigInt(Math.floor((100 - slippage) * 100))) / 10000n;
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800); // 30 min
 
   return encodeFunctionData({
     abi: routerAbi as any,
