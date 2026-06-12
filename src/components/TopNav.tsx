@@ -1,6 +1,8 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import WalletConnect from './WalletConnect';
+
 export default function TopNav() {
   const path = usePathname();
   const links = [
@@ -64,10 +66,13 @@ export default function TopNav() {
           </Link>
         ))}
       </nav>
-      {/* Status indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="dot dot-green" />
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mantle Sepolia</span>
+      {/* Wallet Connect + Status */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <WalletConnect />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span className="dot dot-green" />
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mantle Sepolia</span>
+        </div>
       </div>
     </header>
   );
