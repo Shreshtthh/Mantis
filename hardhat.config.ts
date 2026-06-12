@@ -13,12 +13,12 @@ const config: HardhatUserConfig = {
       url: "https://rpc.sepolia.mantle.xyz",
       accounts: [process.env.MANTLE_PRIVATE_KEY!],
       chainId: 5003,
-    },
+    } as any,
     mantle: {
       url: "https://rpc.mantle.xyz",
       accounts: [process.env.MANTLE_PRIVATE_KEY!],
       chainId: 5000,
-    },
+    } as any,
   },
 };
 
