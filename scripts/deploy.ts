@@ -233,9 +233,27 @@ async function main() {
   // Set exchange rates for common pairs
   const RATE_1E18 = 10n ** 18n;
   const USDC = tokenAddrs["tUSDC"] as `0x${string}`;
+  const USDT = tokenAddrs["tUSDT"] as `0x${string}`;
   const WETH = tokenAddrs["tWETH"] as `0x${string}`;
   const mETH = tokenAddrs["tmETH"] as `0x${string}`;
   const WMNT = tokenAddrs["tWMNT"] as `0x${string}`;
+
+  // ---- Set token decimals for decimal-aware rate math ----
+  // keccak("setTokenDecimals(address,uint8)") = 0x5cdcd8bb
+  const setTokenDecimalsSelector = "0x5cdcd8bb";
+
+  async function setDecimals(token: string, decimals: number) {
+    const data = (setTokenDecimalsSelector +
+      token.slice(2).padStart(64, "0") +
+      decimals.toString(16).padStart(64, "0")) as `0x${string}`;
+    await sendTx(mockRouterAddr, data, `Set decimals(${decimals}) for ${token.slice(0,6)}…`);
+  }
+
+  await setDecimals(USDC, 6);
+  await setDecimals(USDT, 6);
+  await setDecimals(WMNT, 18);
+  await setDecimals(WETH, 18);
+  await setDecimals(mETH, 18);
 
   // encode setRate: keccak("setRate(address,address,uint256)") = 0x7b7c6e1a
   const setRateSelector = "0x5911fb9a";
@@ -267,7 +285,7 @@ async function main() {
   // Set APYs for each token
   const setSupplyApySelector = "0x97bb778a"; // keccak("setSupplyApy(address,uint256)")
   const APY_BPS: Record<string, number> = {
-    [USDC]: 620, [tokenAddrs["tUSDT"]]: 580, [WETH]: 280,
+    [USDC]: 620, [USDT]: 580, [WETH]: 280,
     [mETH]: 310, [WMNT]: 450,
   };
 
