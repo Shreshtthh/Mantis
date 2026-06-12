@@ -26,11 +26,11 @@ const MAINNET_TOKENS = {
 // Testnet tokens are MockERC20 contracts deployed by us on Mantle Sepolia.
 // Addresses are populated after mock contract deployment (Phase 1 Day 1).
 const TESTNET_TOKENS = {
-  WMNT: '0x91C0eBe211095F213ebE899662dE99Fe38f542d9' as `0x${string}`,
-  USDC: '0x207Efefb16e7Dd9B395E4aCd6fEa7046b80995F6' as `0x${string}`,
-  USDT: '0x36a5927B95B7ed104aD1F81Bb23b274bAB40945e' as `0x${string}`,
-  WETH: '0xdD4FbDF97d4Ff3CB19D7D22562845f9f7084CFeD' as `0x${string}`,
-  mETH: '0x8b298654063c4BB76ADea8584B2277A170878613' as `0x${string}`,
+  WMNT: '0x132AD79122Aef72d0F82FED8666D7CDA7c9C9f54' as `0x${string}`,
+  USDC: '0x5d2040b04C8fFc4079Cf79eba59A0b23a29F1997' as `0x${string}`,
+  USDT: '0x960D6e42b2A20cE748c09F66f17F735C55aF7Ac7' as `0x${string}`,
+  WETH: '0xF2Cb0cfa25653726a150A0Ea2A1d7Cde11B3fF8E' as `0x${string}`,
+  mETH: '0xc519dd58a8f982B115F2922D60B09EbfdFd62A89' as `0x${string}`,
 } as const;
 // ============================================================
 // PROTOCOL CONTRACT ADDRESSES
@@ -49,9 +49,9 @@ const MAINNET_CONTRACTS = {
 } as const;
 const TESTNET_CONTRACTS = {
   // Deployed contracts on Mantle Sepolia
-  agentVault: '0xA0a402A3e9C7Cee0CA45911D9BA2673b53140659' as `0x${string}`,
-  merchantMoeRouter: '0x3B38E69728798BF5239D13654ca63e9ad3885A44' as `0x${string}`,
-  lendlePool:        '0x7C165db385c4cd4f1355b916aF7Ec33eA06317E9' as `0x${string}`,
+  agentVault: '0x543Ad9C3Bc414691E07F468850e5aD45A2A9Ad6f' as `0x${string}`,
+  merchantMoeRouter: '0x2C2FBDDf5Af560356e7b36D84DF10CFfb813525F' as `0x${string}`,
+  lendlePool:        '0xcA6d520efDf9D86B446CAb3bB107E5cBA4091d92' as `0x${string}`,
   lendleDataProvider: '0x0000000000000000000000000000000000000000' as `0x${string}`,// MockDataProvider (TODO: deploy mock)
   // ERC-8004 Registries (same addresses — they may be on mainnet only; reads will fallback gracefully)
   erc8004Identity: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432' as `0x${string}`,
