@@ -49,8 +49,8 @@ export async function getLendingRates(token: string): Promise<{
 }> {
   const poolAddress = CONTRACTS.lendlePool;
 
-  // Use mock rates when pool not deployed or on testnet
-  if (poolAddress === '0x0000000000000000000000000000000000000000' || NETWORK === 'testnet') {
+  // No pool deployed
+  if (poolAddress === '0x0000000000000000000000000000000000000000') {
     return MOCK_RATES[token] ?? { supplyApy: 3.0, borrowApy: 5.0, utilization: 50 };
   }
 
@@ -60,6 +60,36 @@ export async function getLendingRates(token: string): Promise<{
   }
 
   try {
+    const poolAbi = NETWORK === 'mainnet' ? LENDLE_POOL_ABI : MOCK_LENDING_POOL_ABI;
+
+    if (NETWORK === 'testnet') {
+      // MockLendingPool stores supplyApy directly (basis points).
+      // Use encodeFunctionData + call to bypass strict ABI typing
+      // (the shared ABI has getReserveData but not supplyApy).
+      const supplyApyData = encodeFunctionData({
+        abi: [{
+          type: 'function', name: 'supplyApy',
+          inputs: [{ type: 'address', name: 'asset' }],
+          outputs: [{ type: 'uint256' }],
+          stateMutability: 'view',
+        } as const],
+        functionName: 'supplyApy',
+        args: [tokenAddress],
+      });
+      const apyHex = await mantlePublic.call({ to: poolAddress, data: supplyApyData });
+      const apyBps = apyHex.data ? BigInt(apyHex.data as `0x${string}`) : 0n;
+
+      const supplyApy = Number(apyBps) / 100; // bps → %
+      const borrowApy = supplyApy * 1.4; // typical borrow ~1.4x supply
+      return {
+        supplyApy,
+        borrowApy,
+        utilization: 50 + Math.round(supplyApy * 5),
+        aTokenAddress: undefined,
+      };
+    }
+
+    // Mainnet: read from real Lendle pool
     const reserveData = await mantlePublic.readContract({
       address: poolAddress,
       abi: LENDLE_POOL_ABI,
@@ -209,6 +239,30 @@ export async function getUserPositions(address: `0x${string}`): Promise<LendlePo
   // In a full implementation, we'd read aToken balances from the Lendle DataProvider
   // For now, return empty until mainnet
   return [];
+}
+
+/**
+ * Get on-chain lending rates for all supported tokens at once.
+ * Used by the status API and dashboard YieldTable.
+ */
+export async function getAllLendingRates(): Promise<
+  Record<string, { supplyApy: number; borrowApy: number; utilization: number }>
+> {
+  const tokens = ['USDC', 'USDT', 'WETH', 'mETH', 'MNT'];
+  const results: Record<string, { supplyApy: number; borrowApy: number; utilization: number }> = {};
+
+  await Promise.all(
+    tokens.map(async (token) => {
+      try {
+        const rates = await getLendingRates(token);
+        results[token] = rates;
+      } catch {
+        results[token] = { supplyApy: 0, borrowApy: 0, utilization: 0 };
+      }
+    })
+  );
+
+  return results;
 }
 
 // ============================================================
