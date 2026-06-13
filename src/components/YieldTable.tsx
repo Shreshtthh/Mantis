@@ -95,9 +95,9 @@ export default function YieldTable() {
               fontSize: '0.75rem',
               fontWeight: 500,
               border: '1px solid',
-              borderColor: selectedToken === t ? 'var(--blue-primary)' : 'var(--border)',
-              background: selectedToken === t ? 'rgba(59,130,246,0.15)' : 'transparent',
-              color: selectedToken === t ? 'var(--blue-bright)' : 'var(--text-muted)',
+              borderColor: selectedToken === t ? 'var(--accent)' : 'var(--border)',
+              background: selectedToken === t ? 'var(--accent-glow)' : 'transparent',
+              color: selectedToken === t ? 'var(--accent-bright)' : 'var(--text-muted)',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
             }}
@@ -129,7 +129,7 @@ export default function YieldTable() {
                   <td>{y.token}</td>
                   <td style={{ color: 'var(--green)', fontWeight: 600 }}>{y.supplyApy.toFixed(1)}%</td>
                   <td style={{ color: 'var(--text-secondary)' }}>
-                    {y.tvlUsd ? `$${(y.tvlUsd / 1_000_000).toFixed(0)}M` : '—'}
+                    {y.tvlUsd ? `$${(y.tvlUsd / 1_000_000).toFixed(0)}M` : '...'}
                   </td>
                   <td>
                     <span className={`badge ${y.source === 'on-chain' ? 'badge-green' : 'badge-blue'}`}>

@@ -64,11 +64,13 @@ export default function PositionTracker({ positions: externalPositions }: Props)
     return (
       <div style={{
         textAlign: 'center',
-        padding: '24px 16px',
+        padding: '28px 16px',
         color: 'var(--text-muted)',
         fontSize: '0.85rem',
       }}>
-        <div style={{ fontSize: 28, marginBottom: 8 }}>📭</div>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', margin: '0 auto 10px' }}>
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
+        </svg>
         No open positions
       </div>
     );
