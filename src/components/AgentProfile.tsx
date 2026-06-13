@@ -19,6 +19,15 @@ interface AgentProfileData {
   } | null;
 }
 
+function MantisIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" />
+      <path d="M12 22V12" /><path d="M20 7l-8 5-8-5" />
+    </svg>
+  );
+}
+
 export default function AgentProfile() {
   const [profile, setProfile] = useState<AgentProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +39,7 @@ export default function AgentProfile() {
         const data = await res.json();
         if (data.success) {
           setProfile({
-            address: data.wallet?.mantleTreasury?.address ?? '—',
+            address: data.wallet?.mantleTreasury?.address ?? '...',
             name: 'Mantis AI Agent',
             version: 'v1.0.0',
             description: 'Autonomous DeFi agent on Mantle',
@@ -59,24 +68,17 @@ export default function AgentProfile() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{
+        <div className="mantis-mark" style={{
           width: 48,
           height: 48,
-          background: 'linear-gradient(135deg, #1e3a5f, #1e40af)',
-          borderRadius: 12,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 24,
-          boxShadow: '0 0 20px rgba(59,130,246,0.25)',
-          flexShrink: 0,
+          borderRadius: 14,
         }}>
-          🦂
+          <MantisIcon />
         </div>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-            <strong style={{ fontSize: '1rem' }}>{profile.name}</strong>
-            <span className="badge badge-blue" style={{ fontSize: '0.65rem' }}>ERC-8004</span>
+            <strong style={{ fontSize: '1rem', fontFamily: 'var(--font-display)' }}>{profile.name}</strong>
+            <span className="badge badge-blue" style={{ fontSize: '0.6rem' }}>ERC-8004</span>
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{profile.version}</div>
         </div>
@@ -88,14 +90,15 @@ export default function AgentProfile() {
         justifyContent: 'space-between',
         alignItems: 'center',
         fontSize: '0.85rem',
-        padding: '8px 12px',
-        background: 'rgba(255,255,255,0.03)',
-        borderRadius: 8,
+        padding: '10px 14px',
+        background: 'rgba(255,255,255,0.025)',
+        borderRadius: 10,
+        border: '1px solid var(--border-subtle)',
       }}>
         <span style={{ color: 'var(--text-muted)' }}>Wallet</span>
         <span style={{
           fontFamily: 'var(--font-mono)',
-          color: 'var(--blue-bright)',
+          color: 'var(--accent-bright)',
           fontSize: '0.8rem',
         }}>
           {truncatedAddr}
@@ -123,7 +126,7 @@ export default function AgentProfile() {
         fontSize: '0.85rem',
       }}>
         <span style={{ color: 'var(--text-muted)' }}>Identity NFT</span>
-        <span style={{ color: profile.tokenId ? 'var(--blue-bright)' : 'var(--text-muted)' }}>
+        <span style={{ color: profile.tokenId ? 'var(--accent-bright)' : 'var(--text-muted)' }}>
           {profile.tokenId ? `#${profile.tokenId}` : 'Not minted'}
         </span>
       </div>

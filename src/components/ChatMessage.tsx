@@ -6,6 +6,15 @@ interface Props {
   message: UIMessage;
 }
 
+function MantisIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" />
+      <path d="M12 22V12" /><path d="M20 7l-8 5-8-5" />
+    </svg>
+  );
+}
+
 /**
  * Extract text content from a UIMessage's parts array.
  * AI SDK v6 uses parts[] instead of a flat `content` string.
@@ -29,7 +38,7 @@ export default function ChatMessage({ message }: Props) {
   return (
     <div className={`message ${isUser ? 'message-user' : 'message-assistant'}`}>
       <div className="message-avatar">
-        {isUser ? 'U' : '🦂'}
+        {isUser ? 'U' : <MantisIcon />}
       </div>
       <div className="message-content">
         {isUser ? (
@@ -41,11 +50,11 @@ export default function ChatMessage({ message }: Props) {
               code: ({ className, children }: any) => {
                 const isBlock = className?.includes('language-');
                 return isBlock ? (
-                  <pre style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, overflow: 'auto', margin: '8px 0' }}>
-                    <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85em', color: 'var(--blue-bright)' }}>{children}</code>
+                  <pre style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, overflow: 'auto', margin: '8px 0' }}>
+                    <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85em', color: 'var(--accent-bright)' }}>{children}</code>
                   </pre>
                 ) : (
-                  <code style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 4, padding: '1px 6px', fontFamily: 'var(--font-mono)', fontSize: '0.85em', color: 'var(--blue-bright)' }}>
+                  <code style={{ background: 'rgba(226,164,57,0.08)', border: '1px solid rgba(226,164,57,0.15)', borderRadius: 5, padding: '2px 7px', fontFamily: 'var(--font-mono)', fontSize: '0.85em', color: 'var(--accent-bright)' }}>
                     {children}
                   </code>
                 );
@@ -56,7 +65,7 @@ export default function ChatMessage({ message }: Props) {
                 </div>
               ),
               th: ({ children }: any) => (
-                <th style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)' }}>
+                <th style={{ padding: '8px 10px', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--border)' }}>
                   {children}
                 </th>
               ),
@@ -66,7 +75,7 @@ export default function ChatMessage({ message }: Props) {
                 </td>
               ),
               a: ({ href, children }: any) => (
-                <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--blue-bright)' }}>
+                <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-bright)' }}>
                   {children}
                 </a>
               ),
@@ -74,7 +83,7 @@ export default function ChatMessage({ message }: Props) {
                 <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{children}</strong>
               ),
               blockquote: ({ children }: any) => (
-                <blockquote style={{ borderLeft: '3px solid var(--blue-primary)', paddingLeft: 12, margin: '8px 0', color: 'var(--text-secondary)' }}>
+                <blockquote style={{ borderLeft: '3px solid var(--accent)', paddingLeft: 14, margin: '8px 0', color: 'var(--text-secondary)' }}>
                   {children}
                 </blockquote>
               ),
@@ -83,7 +92,7 @@ export default function ChatMessage({ message }: Props) {
             {content}
           </ReactMarkdown>
         )}
-        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 6, textAlign: 'right' }}>
+        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 8, textAlign: 'right' }}>
           {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
