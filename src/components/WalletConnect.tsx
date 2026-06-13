@@ -98,7 +98,7 @@ export default function WalletConnect() {
   };
 
   if (wallet) {
-    const shortAddr = `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}`;
+    const shortAddr = `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`;
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div
@@ -106,12 +106,12 @@ export default function WalletConnect() {
             display: 'flex',
             alignItems: 'center',
             gap: 6,
-            padding: '6px 12px',
-            background: 'rgba(59,130,246,0.1)',
-            border: '1px solid rgba(59,130,246,0.2)',
-            borderRadius: 100,
+            padding: '6px 14px',
+            background: 'var(--accent-glow)',
+            border: '1px solid rgba(226,164,57,0.2)',
+            borderRadius: 'var(--radius-pill)',
             fontSize: '0.8rem',
-            color: 'var(--blue-bright)',
+            color: 'var(--accent-bright)',
             cursor: 'pointer',
           }}
           onClick={handleDisconnect}
@@ -132,7 +132,7 @@ export default function WalletConnect() {
         className="btn btn-primary btn-sm"
         style={{ fontSize: '0.8rem', padding: '6px 14px' }}
       >
-        {loading ? 'Connecting…' : 'Connect Wallet'}
+        {loading ? 'Connecting...' : 'Connect Wallet'}
       </button>
       {error && (
         <div style={{ fontSize: '0.7rem', color: 'var(--red)', marginTop: 4 }}>
