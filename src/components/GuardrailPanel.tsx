@@ -110,7 +110,7 @@ export default function GuardrailPanel() {
           <div style={{ 
             height: '100%', 
             width: `${lossPercent}%`, 
-            background: lossPercent > 80 ? 'var(--red)' : 'var(--blue-primary)',
+            background: lossPercent > 80 ? 'var(--red)' : 'var(--accent)',
             transition: 'width 0.3s ease'
           }} />
         </div>
