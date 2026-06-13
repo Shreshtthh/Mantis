@@ -41,7 +41,7 @@ export default function VaultPanel() {
       const now = Math.floor(Date.now() / 1000);
       const unlockAt = Number(vault.pendingWithdrawal!.unlockAt);
       if (now >= unlockAt) {
-        setCountdown('Ready to execute! 🎉');
+        setCountdown('Ready to execute');
         return;
       }
       const remaining = unlockAt - now;
@@ -91,10 +91,10 @@ export default function VaultPanel() {
     );
   }
 
-  const shortVault = `${vault.address.slice(0, 6)}…${vault.address.slice(-4)}`;
-  const shortAgent = `${vault.agent.slice(0, 6)}…${vault.agent.slice(-4)}`;
+  const shortVault = `${vault.address.slice(0, 6)}...${vault.address.slice(-4)}`;
+  const shortAgent = `${vault.agent.slice(0, 6)}...${vault.agent.slice(-4)}`;
   const shortOwner = vault.owner
-    ? `${vault.owner.slice(0, 6)}…${vault.owner.slice(-4)}`
+    ? `${vault.owner.slice(0, 6)}...${vault.owner.slice(-4)}`
     : 'Not set';
   const dailyPct =
     Number(vault.maxDailySpendUsd) > 0
@@ -152,7 +152,7 @@ export default function VaultPanel() {
           fontSize: '0.75rem',
         }}
       >
-        <code style={{ color: 'var(--blue-bright)', fontSize: '0.8rem' }}>{shortVault}</code>
+        <code style={{ color: 'var(--accent-bright)', fontSize: '0.8rem' }}>{shortVault}</code>
         <button
           onClick={handleCopy}
           style={{

@@ -49,7 +49,7 @@ export default function DepositWithdraw() {
       const now = Math.floor(Date.now() / 1000);
       const unlockAt = Number(vault.pendingWithdrawal!.unlockAt);
       if (now >= unlockAt) {
-        setCountdown('Ready — execute now!');
+        setCountdown('Ready to execute');
         return;
       }
       const remaining = unlockAt - now;
@@ -97,12 +97,12 @@ export default function DepositWithdraw() {
       if (depositToken === 'MNT') {
         // Native MNT deposit
         const txHash = await sendNativeDeposit(vaultAddress, amount);
-        setMessage({ type: 'success', text: `Deposit sent! Tx: ${txHash.slice(0, 12)}…` });
+        setMessage({ type: 'success', text: `Deposit sent! Tx: ${txHash.slice(0, 12)}...` });
       } else {
         // ERC-20 deposit — user needs to call token.transfer(vault, amount) from MetaMask
         setMessage({
           type: 'success',
-          text: `Send ${amount} ${depositToken} to AgentVault (${vaultAddress.slice(0, 8)}…) from your MetaMask.`,
+          text: `Send ${amount} ${depositToken} to AgentVault (${vaultAddress.slice(0, 8)}...) from your MetaMask.`,
         });
       }
       setDepositAmount('');
@@ -123,14 +123,14 @@ export default function DepositWithdraw() {
       // Encoded calldata is provided via the chat tool (withdrawFunds)
       setMessage({
         type: 'success',
-        text: `To withdraw: use the chat and say "withdraw X ${depositToken} to 0x..." — Mantis will provide the encoded transaction for you to sign.`,
+        text: `To withdraw: use the chat and say "withdraw X ${depositToken} to 0x...". Mantis will provide the encoded transaction for you to sign.`,
       });
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Withdrawal request failed' });
     }
   };
 
-  const shortVault = vaultAddress ? `${vaultAddress.slice(0, 8)}…${vaultAddress.slice(-6)}` : '—';
+  const shortVault = vaultAddress ? `${vaultAddress.slice(0, 8)}...${vaultAddress.slice(-6)}` : '...';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -140,7 +140,7 @@ export default function DepositWithdraw() {
           AGENT VAULT ADDRESS
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <code style={{ fontSize: '0.85rem', color: 'var(--blue-bright)' }}>{shortVault}</code>
+          <code style={{ fontSize: '0.85rem', color: 'var(--accent-bright)' }}>{shortVault}</code>
           <button
             onClick={handleCopy}
             style={{
@@ -161,21 +161,21 @@ export default function DepositWithdraw() {
             rel="noopener noreferrer"
             style={{
               fontSize: '0.7rem',
-              color: 'var(--blue-bright)',
+              color: 'var(--accent-bright)',
               textDecoration: 'none',
-              border: '1px solid var(--blue-bright)',
+              border: '1px solid var(--accent)',
               borderRadius: 4,
               padding: '2px 6px',
             }}
           >
-            Explorer ↗
+            Explorer
           </a>
         </div>
         <div style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: 8, color: 'var(--text-primary)' }}>
           ${vaultBalance.toFixed(2)}
         </div>
         <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 4 }}>
-          Funds held in vault — {vault?.paused ? '⚠️ Vault is paused' : '✅ Guardrails active'}
+          Funds held in vault. {vault?.paused ? 'Vault is paused' : 'Guardrails active'}
         </div>
       </div>
 
@@ -193,7 +193,7 @@ export default function DepositWithdraw() {
                 padding: '4px 10px',
                 fontSize: '0.7rem',
                 borderRadius: 4,
-                background: depositToken === t ? 'var(--blue-bright)' : 'rgba(255,255,255,0.05)',
+                background: depositToken === t ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
                 color: depositToken === t ? '#fff' : 'var(--text-secondary)',
                 border: '1px solid var(--border)',
                 cursor: 'pointer',
@@ -259,14 +259,14 @@ export default function DepositWithdraw() {
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
               Unlocks in: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{countdown}</span>
             </div>
-            {countdown === 'Ready — execute now!' && (
+            {countdown === 'Ready to execute' && (
               <div style={{ marginTop: 8 }}>
                 <button
                   onClick={handleRequestWithdrawal}
                   className="btn btn-primary btn-sm"
                   style={{ width: '100%' }}
                 >
-                  ✨ Execute Withdrawal
+                  Execute Withdrawal
                 </button>
               </div>
             )}
@@ -275,7 +275,7 @@ export default function DepositWithdraw() {
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 8 }}>
             Use chat to request: &quot;withdraw [amount] [token] to [your address]&quot;
             <br />
-            ⚠️ Withdrawals have a {vault?.withdrawalDelay ? Number(vault.withdrawalDelay) / 3600 : 1}-hour timelock.
+            Note: Withdrawals have a {vault?.withdrawalDelay ? Number(vault.withdrawalDelay) / 3600 : 1}-hour timelock.
           </div>
         )}
       </div>
