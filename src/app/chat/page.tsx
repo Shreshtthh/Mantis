@@ -12,7 +12,7 @@ const SUGGESTED_PROMPTS = [
   'What\'s the best yield for USDC right now?',
   'Show me my wallet balance',
   'What\'s my current portfolio?',
-  'Get me a swap quote: 100 USDC → mETH',
+  'Get me a swap quote: 100 USDC to mETH',
   'Show me BTC-PERP market info',
   'What\'s my audit trail?',
 ];
@@ -25,14 +25,23 @@ function loadSavedMessages() {
   try {
     const raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch { /* corrupted data — start fresh */ }
+  } catch { /* corrupted data, start fresh */ }
   return [];
+}
+
+function MantisIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L4 7v10l8 5 8-5V7l-8-5z" />
+      <path d="M12 22V12" /><path d="M20 7l-8 5-8-5" />
+    </svg>
+  );
 }
 
 export default function ChatPage() {
   // Restore chat history from sessionStorage so messages persist across
-  // page navigations (chat → dashboard → chat).  sessionStorage auto-clears
-  // when the tab closes, so stale data won't leak across sessions.
+  // page navigations (chat to dashboard to chat). sessionStorage auto-clears
+  // when the tab closes, so stale data will not leak across sessions.
   const [savedMessages] = useState(loadSavedMessages);
 
   // Pass restored messages as initial state to the AI SDK's internal store.
@@ -57,7 +66,7 @@ export default function ChatPage() {
     if (messages.length > 0) {
       try {
         sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
-      } catch { /* quota exceeded — oldest messages will survive */ }
+      } catch { /* quota exceeded, oldest messages will survive */ }
     }
   }, [messages]);
 
@@ -91,8 +100,8 @@ export default function ChatPage() {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: '1fr 320px',
-      height: 'calc(100vh - 57px)',
+      gridTemplateColumns: '1fr 340px',
+      height: 'calc(100vh - 53px)',
       gap: 0,
     }}>
 
@@ -103,20 +112,27 @@ export default function ChatPage() {
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '24px',
+          padding: '28px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 16,
+          gap: 18,
         }}>
           {messages.length === 0 && (
             <div style={{
               textAlign: 'center',
               paddingTop: '10vh',
-              animation: 'fadeIn 0.4s ease',
+              animation: 'fadeIn 0.5s ease',
             }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🦂</div>
-              <h2 style={{ marginBottom: 8, fontSize: '1.5rem' }}>Mantis is ready</h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: '0.9rem' }}>
+              <div className="mantis-mark animate-float" style={{
+                width: 64,
+                height: 64,
+                borderRadius: 18,
+                margin: '0 auto 20px',
+              }}>
+                <MantisIcon size={32} />
+              </div>
+              <h2 style={{ marginBottom: 8, fontSize: '1.5rem', fontFamily: 'var(--font-display)' }}>Mantis is ready</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: 36, fontSize: '0.9rem' }}>
                 Ask me about yields, swap tokens, open perps positions, or check your portfolio.
               </p>
 
@@ -128,7 +144,7 @@ export default function ChatPage() {
                 justifyContent: 'center',
                 maxWidth: 560,
                 margin: '0 auto',
-              }}>
+              }} className="stagger">
                 {SUGGESTED_PROMPTS.map((prompt) => (
                   <button
                     key={prompt}
@@ -149,7 +165,7 @@ export default function ChatPage() {
 
           {isLoading && (
             <div className="message message-assistant animate-fadeIn">
-              <div className="message-avatar">🦂</div>
+              <div className="message-avatar"><MantisIcon size={16} /></div>
               <div className="message-content" style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 14, paddingBottom: 14 }}>
                 <span className="typing-dot" />
                 <span className="typing-dot" />
@@ -161,13 +177,19 @@ export default function ChatPage() {
           {error && (
             <div style={{
               background: 'var(--red-glow)',
-              border: '1px solid rgba(239,68,68,0.3)',
+              border: '1px solid rgba(248,113,113,0.25)',
               borderRadius: 'var(--radius-md)',
               padding: '12px 16px',
               color: 'var(--red)',
               fontSize: '0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
             }}>
-              ⚠️ {error.message}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              {error.message}
             </div>
           )}
 
@@ -176,10 +198,10 @@ export default function ChatPage() {
 
         {/* Input */}
         <div style={{
-          padding: '16px 24px',
+          padding: '16px 28px',
           borderTop: '1px solid var(--border-subtle)',
-          background: 'rgba(7,11,26,0.9)',
-          backdropFilter: 'blur(12px)',
+          background: 'rgba(12,12,14,0.92)',
+          backdropFilter: 'blur(16px)',
         }}>
           <form onSubmit={handleSubmit} className="chat-input-wrapper">
             <textarea
@@ -188,7 +210,7 @@ export default function ChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask Mantis anything… (Enter to send, Shift+Enter for new line)"
+              placeholder="Ask Mantis anything... (Enter to send, Shift+Enter for new line)"
               disabled={isLoading}
               rows={1}
             />
@@ -214,7 +236,7 @@ export default function ChatPage() {
           </form>
 
           <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 8, textAlign: 'center' }}>
-            Mantis is on <strong style={{ color: 'var(--yellow)' }}>Mantle Sepolia testnet</strong> — no real money at risk
+            Mantis is on <strong style={{ color: 'var(--accent)' }}>Mantle Sepolia testnet</strong>: no real money at risk
           </p>
         </div>
       </div>
@@ -228,34 +250,43 @@ export default function ChatPage() {
         overflowY: 'auto',
         background: 'var(--bg-surface)',
       }}>
-        <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
-          <h4 style={{ marginBottom: 12, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-            Agent
-          </h4>
+        <SidebarSection title="Agent">
           <AgentProfile />
-        </div>
+        </SidebarSection>
 
-        <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
-          <h4 style={{ marginBottom: 4, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-            Guardrails
-          </h4>
+        <SidebarSection title="Guardrails">
           <GuardrailPanel />
-        </div>
+        </SidebarSection>
 
-        <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
-          <h4 style={{ marginBottom: 12, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-            Recent Activity
-          </h4>
+        <SidebarSection title="Recent Activity">
           <AuditTrail limit={5} compact />
-        </div>
+        </SidebarSection>
 
-        <div style={{ padding: '20px 16px' }}>
-          <h4 style={{ marginBottom: 12, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-            Emergency
-          </h4>
+        <SidebarSection title="Emergency" noBorder>
           <KillSwitch />
-        </div>
+        </SidebarSection>
       </div>
+    </div>
+  );
+}
+
+function SidebarSection({ title, children, noBorder }: { title: string; children: React.ReactNode; noBorder?: boolean }) {
+  return (
+    <div style={{
+      padding: '20px 18px',
+      borderBottom: noBorder ? 'none' : '1px solid var(--border-subtle)',
+    }}>
+      <h4 style={{
+        marginBottom: 14,
+        fontSize: '0.7rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.1em',
+        color: 'var(--text-muted)',
+        fontWeight: 600,
+      }}>
+        {title}
+      </h4>
+      {children}
     </div>
   );
 }
