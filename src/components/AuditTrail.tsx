@@ -119,10 +119,10 @@ export default function AuditTrail({ limit = 10, compact = false }: Props) {
                     rel="noopener noreferrer"
                     style={{ fontSize: '0.8rem' }}
                   >
-                    {entry.audit_ipfs_cid.slice(0, 8)}…{entry.audit_ipfs_cid.slice(-4)} ↗
+                    {entry.audit_ipfs_cid.slice(0, 8)}...{entry.audit_ipfs_cid.slice(-4)}
                   </a>
                 ) : (
-                  <span style={{ color: 'var(--text-muted)' }}>—</span>
+                  <span style={{ color: 'var(--text-muted)' }}>...</span>
                 )}
               </td>
               <td>
@@ -133,10 +133,10 @@ export default function AuditTrail({ limit = 10, compact = false }: Props) {
                     rel="noopener noreferrer"
                     style={{ fontSize: '0.8rem' }}
                   >
-                    {entry.tx_hash.slice(0, 8)}… ↗
+                    {entry.tx_hash.slice(0, 8)}...
                   </a>
                 ) : (
-                  <span style={{ color: 'var(--text-muted)' }}>—</span>
+                  <span style={{ color: 'var(--text-muted)' }}>...</span>
                 )}
               </td>
             </tr>

@@ -16,6 +16,26 @@ interface Props {
   limit?: number;
 }
 
+/* SVG icons for action types */
+function SwapIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 014-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 01-4 4H3" /></svg>;
+}
+function DepositIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>;
+}
+function WithdrawIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" /></svg>;
+}
+function TrendUpIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>;
+}
+function TrendDownIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></svg>;
+}
+function BoltIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>;
+}
+
 export default function ActivityLog({ limit = 10 }: Props) {
   const [entries, setEntries] = useState<ActionEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,16 +60,13 @@ export default function ActivityLog({ limit = 10 }: Props) {
     }
   }
 
-  const actionIcons: Record<string, string> = {
-    swapTokens: '🔄',
-    depositLendle: '💰',
-    withdrawLendle: '📤',
-    openPerpsPosition: '📈',
-    closePerpsPosition: '📉',
-    perps_market_buy: '🟢',
-    perps_market_sell: '🔴',
-    perps_close_market: '⏹️',
-    withdrawFunds: '💸',
+  const getActionIcon = (action: string) => {
+    if (action.includes('swap')) return <SwapIcon />;
+    if (action.includes('deposit') || action.includes('Deposit')) return <DepositIcon />;
+    if (action.includes('withdraw') || action.includes('Withdraw')) return <WithdrawIcon />;
+    if (action.includes('buy') || action.includes('open') || action.includes('Open')) return <TrendUpIcon />;
+    if (action.includes('sell') || action.includes('close') || action.includes('Close')) return <TrendDownIcon />;
+    return <BoltIcon />;
   };
 
   if (loading) {
@@ -66,11 +83,13 @@ export default function ActivityLog({ limit = 10 }: Props) {
     return (
       <div style={{
         textAlign: 'center',
-        padding: '24px 16px',
+        padding: '28px 16px',
         color: 'var(--text-muted)',
         fontSize: '0.85rem',
       }}>
-        <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', margin: '0 auto 10px' }}>
+          <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+        </svg>
         No activity yet. Start chatting to generate actions.
       </div>
     );
@@ -79,7 +98,7 @@ export default function ActivityLog({ limit = 10 }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {entries.map((entry, i) => {
-        const icon = actionIcons[entry.action] ?? '⚡';
+        const icon = getActionIcon(entry.action);
         const success = entry.result_success;
         const time = new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const date = new Date(entry.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' });
@@ -90,24 +109,24 @@ export default function ActivityLog({ limit = 10 }: Props) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '10px 12px',
+              gap: 12,
+              padding: '11px 14px',
               background: 'rgba(255,255,255,0.02)',
               borderRadius: 'var(--radius-sm)',
               border: '1px solid var(--border-subtle)',
-              transition: 'border-color 0.15s ease',
+              transition: 'border-color var(--transition-fast), background var(--transition-fast)',
             }}
           >
             {/* Icon */}
             <div style={{
               width: 32,
               height: 32,
-              borderRadius: 8,
-              background: success ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+              borderRadius: 9,
+              background: success ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 14,
+              color: success ? 'var(--green)' : 'var(--red)',
               flexShrink: 0,
             }}>
               {icon}
@@ -134,12 +153,14 @@ export default function ActivityLog({ limit = 10 }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               {entry.audit_ipfs_cid && (
                 <span style={{
-                  fontSize: '0.65rem',
+                  fontSize: '0.6rem',
                   padding: '2px 6px',
-                  borderRadius: 100,
-                  background: 'rgba(59,130,246,0.1)',
-                  color: 'var(--blue-bright)',
-                  border: '1px solid rgba(59,130,246,0.2)',
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--accent-glow)',
+                  color: 'var(--accent-bright)',
+                  border: '1px solid rgba(226,164,57,0.2)',
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
                 }}>
                   IPFS
                 </span>
