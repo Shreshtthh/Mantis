@@ -12,6 +12,7 @@
 import { getLendingRates } from './lendle';
 import { getSwapQuote } from './merchant-moe';
 import { getAccountInfo, getAllPositions, scanSignals } from './byreal-perps';
+import { scanSentiment } from './sentiment';
 import { getMantleBalance, getTokenPrices } from '@/agent/wallet';
 import { getUserPositions } from './lendle';
 import { getAgentAddress } from '@/lib/mantle';
@@ -225,14 +226,16 @@ export async function getPnLSummary(): Promise<{
  */
 export async function generateStrategyProposal(): Promise<StrategyProposal> {
   // Gather data from all sources in parallel
-  const [signalsResult, whalesResult, yieldsResult, portfolioResult] = await Promise.allSettled([
+  const [signalsResult, sentimentResult, whalesResult, yieldsResult, portfolioResult] = await Promise.allSettled([
     scanSignals(),
+    scanSentiment(),
     getWhaleTransfers('0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF', 10_000), // USDC on Mantle
     compareYields('USDC'),
     getPortfolio(),
   ]);
 
   const signals = signalsResult.status === 'fulfilled' ? signalsResult.value : [];
+  const sentimentData = sentimentResult.status === 'fulfilled' ? sentimentResult.value : [];
   const whales = whalesResult.status === 'fulfilled' ? whalesResult.value : [];
   const yields = yieldsResult.status === 'fulfilled' ? yieldsResult.value : [];
   const portfolio = portfolioResult.status === 'fulfilled' ? portfolioResult.value : null;
@@ -264,6 +267,17 @@ export async function generateStrategyProposal(): Promise<StrategyProposal> {
   if (bullishSignals.length > 0) {
     const topBull = bullishSignals.sort((a, b) => b.strength - a.strength)[0];
     reasoning.push(`${topBull.coin} showing bullish momentum (strength ${topBull.strength}/100, 24h change +${topBull.priceChange24h.toFixed(1)}%)`);
+  }
+
+  // Sentiment data (Fear & Greed + news)
+  if (sentimentData.length > 0) {
+    const bullishSentiment = sentimentData.filter(s => s.direction === 'bullish');
+    const fgValue = sentimentData[0]?.fearGreed ?? 50;
+    if (fgValue >= 70) reasoning.push(`Fear & Greed Index at ${fgValue} — market greed, consider caution`);
+    else if (fgValue <= 30) reasoning.push(`Fear & Greed Index at ${fgValue} — market fear, potential buying opportunity`);
+    if (bullishSentiment.length > 0) {
+      reasoning.push(`Sentiment bullish on ${bullishSentiment.map(s => s.coin).join(', ')} (confidence: ${bullishSentiment.map(s => s.confidence).join(', ')}%)`);
+    }
   }
 
   // Funding rate reasoning
