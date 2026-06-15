@@ -74,36 +74,85 @@ export const ERC20_ABI = [
 // ============================================================
 
 export const IDENTITY_REGISTRY_ABI = [
+  // ERC-721 standard
   {
     type: 'function',
-    name: 'getIdentity',
+    name: 'ownerOf',
     stateMutability: 'view',
     inputs: [{ name: 'tokenId', type: 'uint256' }],
-    outputs: [
-      { name: 'owner', type: 'address' },
-      { name: 'name', type: 'string' },
-      { name: 'description', type: 'string' },
-      { name: 'metadataUri', type: 'string' },
-      { name: 'registeredAt', type: 'uint256' },
-    ],
+    outputs: [{ name: 'owner', type: 'address' }],
   },
   {
     type: 'function',
-    name: 'getAgentByAddress',
+    name: 'balanceOf',
     stateMutability: 'view',
-    inputs: [{ name: 'agent', type: 'address' }],
-    outputs: [{ name: 'tokenId', type: 'uint256' }],
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: 'balance', type: 'uint256' }],
   },
   {
     type: 'function',
-    name: 'mintIdentity',
+    name: 'tokenURI',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ name: 'uri', type: 'string' }],
+  },
+  // Agent identity
+  {
+    type: 'function',
+    name: 'getAgentWallet',
+    stateMutability: 'view',
+    inputs: [{ name: 'agentId', type: 'uint256' }],
+    outputs: [{ name: 'wallet', type: 'address' }],
+  },
+  {
+    type: 'function',
+    name: 'getMetadata',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'agentId', type: 'uint256' },
+      { name: 'metadataKey', type: 'string' },
+    ],
+    outputs: [{ name: 'value', type: 'bytes' }],
+  },
+  // register() — 3 overloads. The simplest: register(string agentURI) returns agentId
+  {
+    type: 'function',
+    name: 'register',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'agentURI', type: 'string' }],
+    outputs: [{ name: 'agentId', type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'setAgentURI',
     stateMutability: 'nonpayable',
     inputs: [
-      { name: 'name', type: 'string' },
-      { name: 'description', type: 'string' },
-      { name: 'metadataUri', type: 'string' },
+      { name: 'agentId', type: 'uint256' },
+      { name: 'newURI', type: 'string' },
     ],
-    outputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [],
+  },
+  // Info
+  {
+    type: 'function',
+    name: 'name',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'string' }],
+  },
+  {
+    type: 'function',
+    name: 'symbol',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'string' }],
+  },
+  {
+    type: 'function',
+    name: 'getVersion',
+    stateMutability: 'pure',
+    inputs: [],
+    outputs: [{ name: '', type: 'string' }],
   },
 ] as const;
 
