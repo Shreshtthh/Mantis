@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "worker": "ts-node --esm src/worker/index.ts",
+    "agent-loop": "npx tsx src/worker/agent-loop.ts",
+    "agent-loop:watch": "npx tsx src/worker/agent-loop.ts --loop",
+    "agent-loop:dry": "DRY_RUN=true npx tsx src/worker/agent-loop.ts --loop",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -15,12 +18,14 @@
     "@ai-sdk/groq": "^3.0.39",
     "@ai-sdk/react": "^3.0.199",
     "@byreal-io/byreal-perps-cli": "^0.3.7",
+    "@nktkas/hyperliquid": "^0.32.2",
     "ai": "^6.0.197",
     "better-sqlite3": "^11.7.0",
     "next": "14.2.29",
     "react": "^18",
     "react-dom": "^18",
     "react-markdown": "latest",
+    "remark-gfm": "^4.0.1",
     "typescript": "^5",
     "viem": "^2.21.54",
     "zod": "^3.23.8"
