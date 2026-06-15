@@ -84,18 +84,18 @@ const TESTNET_CONFIG = {
 // ============================================================
 export const GUARDRAIL_DEFAULTS = {
   // Hard limits — cannot be overridden
-  maxLeverageX: 5,                    // Zod also enforces this at schema level
-  maxSingleTradeSizeUsd: 500,         // Largest single trade allowed
-  maxDailyLossUsd: 200,               // Circuit breaker: pause after this loss in 24h
-  maxPortfolioConcentrationPct: 40,   // No single asset > 40% of portfolio
+  maxLeverageX: 2,                    // Conservative: only 2x at demo scale
+  maxSingleTradeSizeUsd: 20,          // ETH min position ~$8 margin at 2x, cap at $20
+  maxDailyLossUsd: 5,                 // Circuit breaker: pause after $5 loss in 24h
+  maxPortfolioConcentrationPct: 100,  // Only trading ETH — concentration limit irrelevant
   maxConsecutiveLosses: 3,            // Circuit breaker: pause after 3 losses in a row
   approvedTokens: ['USDC', 'MNT', 'WMNT', 'mETH', 'WETH', 'USDT'] as string[],
-  approvedMarkets: ['BTC-PERP', 'ETH-PERP', 'SOL-PERP', 'GOLD-PERP', 'SILVER-PERP', 'OIL-PERP'] as string[],
+  approvedMarkets: ['ETH-PERP'] as string[],  // Only ETH at demo scale (BTC $84 min, SOL $125 min)
   // Soft limits — require user approval when exceeded
-  softMaxTradeSizeUsd: 100,           // Trades > $100 need approval
-  softMaxLendleDepositUsd: 200,       // Lendle deposits > $200 need approval
+  softMaxTradeSizeUsd: 10,            // Trades > $10 need confirmation
+  softMaxLendleDepositUsd: 50,
   // Circuit breaker thresholds
-  maxGasGwei: 50,                     // Pause if gas > 50 gwei (anomaly detection)
+  maxGasGwei: 100,                    // Demo-only: higher tolerance
   minSlippagePct: 0.1,
   maxSlippagePct: 5,
 };
@@ -121,9 +121,9 @@ export const BYREAL_CONFIG = {
 // CONSOLIDATED PERPS CONFIG (v2 — used by managePerps tool)
 // ============================================================
 export const PERPS_CONFIG = {
-  maxLeverage: 5,
-  approvedCoins: ['BTC', 'ETH', 'SOL'] as string[],
-  maxPositionSizeUsd: 500,
+  maxLeverage: 2,  // Conservative at demo scale — 2x only
+  approvedCoins: ['ETH'] as string[],  // Only ETH tradeable with $10 demo capital
+  maxPositionSizeUsd: 20,  // 0.01 ETH minimum ~$8 margin at 2x, cap at $20
 };
 // ============================================================
 // ALPHA & DATA CONFIG (v2 — used by smart-money/dex-analytics)
