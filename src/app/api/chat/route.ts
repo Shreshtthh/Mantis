@@ -51,6 +51,9 @@ import { deposit as lendleDeposit, withdraw as lendleWithdraw, getLendingRates, 
 // Tool imports — vault
 import { vaultExecute, getVaultState, encodeRequestWithdrawal, encodeExecuteWithdrawal, encodeCancelWithdrawal } from '@/agent/vault';
 
+// Tool imports — sentiment
+import { analyzeSentiment, scanSentiment } from '@/agent/tools/sentiment';
+
 // Tool imports — alpha
 import { getWhaleTransfers } from '@/agent/tools/smart-money';
 import { getMerchantMoePools, getPriceImpact, getLiquidityDepth } from '@/agent/tools/dex-analytics';
@@ -325,7 +328,19 @@ export async function POST(req: Request) {
           }),
         }),
 
-        // 7. getStrategyProposal
+        // 7. getSentiment — aggregated market sentiment with news
+        getSentiment: tool({
+          description: 'Get aggregated market sentiment for a coin or all tracked coins. Combines Fear & Greed Index, CoinGecko price action, CryptoPanic news headlines, and Hyperliquid funding rates into a single directional signal with confidence score. Use this to understand market mood before trading.',
+          inputSchema: z.object({
+            coin: z.enum(['BTC', 'ETH', 'SOL']).optional().describe('Coin to analyze. Omit to scan ALL tracked coins.'),
+          }),
+          execute: safe(async ({ coin }) => {
+            if (coin) return await analyzeSentiment(coin);
+            return await scanSentiment();
+          }),
+        }),
+
+        // 8. getStrategyProposal
         getStrategyProposal: tool({
           description: 'Generate an AI strategy recommendation based on current market signals, whale activity, yields, and portfolio. Returns structured proposal with reasoning.',
           inputSchema: EMPTY_PARAMS,

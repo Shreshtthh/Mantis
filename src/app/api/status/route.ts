@@ -13,9 +13,16 @@ import { getAllLendingRates } from '@/agent/tools/lendle';
 import { NETWORK } from '@/agent/config';
 
 export const runtime = 'nodejs';
-export const revalidate = 15; // Cache for 15 seconds
+export const revalidate = 30; // 30s cache — enough to not spam CLI, fresh enough for demo
+
+// In-memory cache so CLI calls only fire once per polling cycle
+let _cache: { data: any; ts: number } | null = null;
+const CACHE_MS = 30_000; // 30 seconds
 
 export async function GET() {
+  // Return cached result if fresh — avoids CLI spam from dashboard polling
+  if (_cache && Date.now() - _cache.ts < CACHE_MS) return NextResponse.json(_cache.data);
+
   try {
     const [wallet, guardrailStatus, gasPrice, positions, vaultState, lendingRates] = await Promise.allSettled([
       getWalletBalance(),
@@ -39,6 +46,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     }, (_, v) => typeof v === 'bigint' ? v.toString() : v));
 
+    _cache = { data: body, ts: Date.now() };
     return NextResponse.json(body);
   } catch (err) {
     return NextResponse.json(
