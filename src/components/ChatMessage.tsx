@@ -1,6 +1,7 @@
 'use client';
 import type { UIMessage } from 'ai';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Props {
   message: UIMessage;
@@ -45,6 +46,7 @@ export default function ChatMessage({ message }: Props) {
           <p style={{ margin: 0, color: 'var(--text-primary)' }}>{content}</p>
         ) : (
           <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
             components={{
               p: ({ children }: any) => <p style={{ margin: '0 0 8px', color: 'var(--text-primary)' }}>{children}</p>,
               code: ({ className, children }: any) => {
