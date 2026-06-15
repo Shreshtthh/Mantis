@@ -48,6 +48,26 @@ export const mantlePublic = createPublicClient({
 });
 
 // ============================================================
+// MAINNET PUBLIC CLIENT (read-only, always mainnet)
+// ============================================================
+// ERC-8004 registries are only deployed on Mantle mainnet.
+// Reads (identity, reputation, balanceOf) must always hit mainnet
+// regardless of the NETWORK env var (which controls DeFi routing).
+
+const mantleMainnet = defineChain({
+  id: 5000,
+  name: 'Mantle',
+  nativeCurrency: { decimals: 18, name: 'MNT', symbol: 'MNT' },
+  rpcUrls: { default: { http: ['https://rpc.mantle.xyz'] } },
+  blockExplorers: { default: { name: 'Mantlescan', url: 'https://explorer.mantle.xyz' } },
+});
+
+export const mantleMainnetPublic = createPublicClient({
+  chain: mantleMainnet,
+  transport: http('https://rpc.mantle.xyz'),
+});
+
+// ============================================================
 // WALLET CLIENT (signing)
 // ============================================================
 // Only created on the server (has access to MANTLE_PRIVATE_KEY)

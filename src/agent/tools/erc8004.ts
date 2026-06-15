@@ -11,7 +11,7 @@
  * - No getIdentity() — use ownerOf() + tokenURI() instead
  */
 
-import { getMantleWallet, mantlePublic, getAgentAddress } from '@/lib/mantle';
+import { getMantleWallet, mantleMainnetPublic, getAgentAddress } from '@/lib/mantle';
 import {
   IDENTITY_REGISTRY_ABI,
   REPUTATION_REGISTRY_ABI,
@@ -63,13 +63,13 @@ export async function getIdentity(tokenId?: bigint): Promise<AgentIdentity | nul
 
   try {
     const [owner, uri] = await Promise.all([
-      mantlePublic.readContract({
+      mantleMainnetPublic.readContract({
         address: CONTRACTS.erc8004Identity,
         abi: IDENTITY_REGISTRY_ABI,
         functionName: 'ownerOf',
         args: [id],
       }) as Promise<string>,
-      mantlePublic.readContract({
+      mantleMainnetPublic.readContract({
         address: CONTRACTS.erc8004Identity,
         abi: IDENTITY_REGISTRY_ABI,
         functionName: 'tokenURI',
@@ -98,7 +98,7 @@ export async function getIdentity(tokenId?: bigint): Promise<AgentIdentity | nul
 export async function getAgentBalance(address?: `0x${string}`): Promise<number> {
   const addr = address ?? getAgentAddress();
   try {
-    const balance = await mantlePublic.readContract({
+    const balance = await mantleMainnetPublic.readContract({
       address: CONTRACTS.erc8004Identity,
       abi: IDENTITY_REGISTRY_ABI,
       functionName: 'balanceOf',
@@ -143,7 +143,7 @@ export async function registerIdentity(params: {
       args: [params.agentURI],
     });
 
-    const receipt = await mantlePublic.waitForTransactionReceipt({ hash: txHash });
+    const receipt = await mantleMainnetPublic.waitForTransactionReceipt({ hash: txHash });
 
     if (receipt.status !== 'success') {
       console.error('❌ Registration tx reverted');
@@ -153,7 +153,7 @@ export async function registerIdentity(params: {
     // Extract tokenId from the Registered event (topic 2 = agentId if indexed)
     // Fallback: try reading balanceOf to derive (first token = tokenId 1 if no prior)
     // For now, treat it as sequential — the agent's first token is their agentId
-    const agentId = await mantlePublic.readContract({
+    const agentId = await mantleMainnetPublic.readContract({
       address: identityRegistry,
       abi: IDENTITY_REGISTRY_ABI,
       functionName: 'balanceOf',
@@ -184,7 +184,7 @@ export async function getReputation(agentId?: bigint): Promise<AgentReputation |
   if (!id) return null;
 
   try {
-    const result = await mantlePublic.readContract({
+    const result = await mantleMainnetPublic.readContract({
       address: CONTRACTS.erc8004Reputation,
       abi: REPUTATION_REGISTRY_ABI,
       functionName: 'getReputation',
