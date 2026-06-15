@@ -18,7 +18,7 @@ import {
   CONTRACTS,
 } from '@/lib/contracts';
 import { AGENT_IDENTITY } from '@/agent/config';
-import type { AgentIdentity, AgentReputation } from '@/lib/types';
+import type { AgentIdentity, AgentReputation, ValidationEntry } from '@/lib/types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -254,6 +254,6 @@ export async function getAgentValidations(
 ): Promise<bigint[]> {
   return []; // ValidationRegistry not deployed yet
 }
-export async function getValidation(_validationId: bigint): Promise<null> {
+export async function getValidation(_validationId: bigint): Promise<ValidationEntry | null> {
   return null; // ValidationRegistry not deployed yet
 }
