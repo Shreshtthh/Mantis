@@ -1,181 +1,253 @@
-# Mantis — Demo Video Script
+# Mantis Demo Script — Turing Test Hackathon 2026
 
-> Duration: 3 minutes
-> Target: Turing Test Hackathon 2026 — Tracks A (DeFi Strategy) + B (RealClaw Expansion)
-> Format: Screen recording with voiceover. Cut between TG, web dashboard, and terminal.
-
----
-
-## SCENE 1: THE PROBLEM (0:00 – 0:25)
-
-**Visual:** Screen shows a cluttered DeFi dashboard. Numbers everywhere.
-
-**Voiceover:**
-"DeFi is a mess. You've got tokens on Mantle. Perps on Hyperliquid. Swaps on one DEX. Lending on another. Fourteen different things to check before you make a single trade. Nobody has time for this."
-
-**Visual:** Cut to black. Text fades in: "What if your wallet had a brain?"
-
-**Voiceover:**
-"This is Mantis. An AI agent that trades for you. On-chain. Auditable. And it can't go rogue."
+**Duration:** 3–4 minutes
+**Tracks:** Track A (Mirana — DeFi Strategy) + Track B (Byreal — Agentic Economy)
 
 ---
 
-## SCENE 2: REALCLAW ON TELEGRAM — BYREAL INTEGRATION (0:25 – 1:10)
+## BEFORE RECORDING
 
-**Visual:** Open Telegram. Show MantisPincerBot chat. RealClaw status: online.
+### Open these windows (arrange so you can switch between them):
 
-**Voiceover:**
-"Mantis lives on Telegram through RealClaw — Byreal's AI agent platform. It's got its own wallet, its own on-chain identity, and it trades perpetual futures through the Byreal Perps engine. Let me show you."
+| Window | What's running |
+|--------|---------------|
+| **Terminal 1** (large) | `npm run dev` — leave it visible to show CLI logs |
+| **Browser** | `http://localhost:3000` — fresh chat, no history |
+| **Terminal 2** (side) | For manual CLI commands during the video |
+| **VS Code** (optional) | `src/worker/agent-loop.ts` open to show during Scene 5 |
 
-**Visual:** Type into TG: "Scan the markets. What looks good?"
+### Prep commands (run in Terminal 2 before recording):
 
-**Voiceover:**
-"I ask it to scan markets. RealClaw's Claude model picks up the Byreal Perps skill — it calls the signal scanner, checks funding rates, RSI, MACD, volume across BTC, ETH, and SOL."
+```bash
+cd /root/metamask-cook-off/TuringTestHackathon
+export BYREAL_PERPS_AGENT_KEY=$(grep BYREAL_PERPS_AGENT_KEY .env | cut -d= -f2)
+export BYREAL_PERPS_WALLET_ADDRESS=$(grep BYREAL_PERPS_WALLET_ADDRESS .env | cut -d= -f2)
 
-**Visual:** RealClaw responds with market analysis. Show the response.
-
-**Voiceover:**
-"ETH shows bearish divergence — funding is positive, RSI is cooling off. The agent gives me a clear read with data, not vibes."
-
-**Visual:** Type: "Short ETH $5 with 2x and 3% stop-loss"
-
-**Voiceover:**
-"I tell it to execute. It calls the Byreal Perps CLI — market order, 2x leverage, stop-loss attached."
-
-**Visual:** RealClaw confirms: "Done. Position 0.003 ETH short at $1,665. SL at $1,715. View: app.hyperliquid.xyz/trade/ETH"
-
-**Voiceover:**
-"No wallet hunting. No gas math. No exchange tabs. I just said what I wanted and the agent did it. This is what Byreal + RealClaw enables — AI-native trading through chat."
-
-**Visual:** Show the position on Hyperliquid explorer. Real money, real position.
-
-**Voiceover:**
-"This trade is live on Hyperliquid mainnet. Real money. Real execution. But here's the thing — RealClaw is great when I'm chatting. What about when I'm asleep?"
-
----
-
-## SCENE 3: THE AUTONOMOUS AGENT LOOP (1:10 – 1:45)
-
-**Visual:** Switch to terminal. Show `agent-loop.ts` running with logs scrolling.
-
-**Voiceover:**
-"That's where the autonomous agent loop comes in. Every 10 minutes, it wakes up, pulls market data from four free sources, asks the LLM to evaluate, and decides whether to trade — all without me touching anything."
-
-**Visual:** Walk through the terminal output:
-
-```
-══════════════════════════════════════
-  Mantis Autonomous Agent Loop
-  Dry run: NO | Coins: ETH
-  Leverage: 2x | Max position: $5
-  Min confidence: 75%
-══════════════════════════════════════
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Cycle start (LIVE)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Wallet: $8.42 equity
---- ETH ---
-  Sentiment: bullish (score 68, conf 42%)
-  Confidence 42% < 75% threshold — skipping
-Cycle done.
+# Verify everything works
+byreal-perps-cli -o json account info     # should show $19.61
+byreal-perps-cli -o json signal scan       # should show 30 coins
+byreal-perps-cli -o json position list     # should be empty
 ```
 
-**Voiceover:**
-"It pulls Fear & Greed from Alternative.me. Price action from CoinGecko. News headlines from CryptoPanic. Funding rates from Hyperliquid. Feeds it all to DeepSeek. If confidence crosses 75%, it opens a trade with a stop-loss. If it loses 3 in a row, it pauses itself. Three dollar max loss per day. I set these limits. The code enforces them."
-
-**Visual:** Show the circuit breaker state in a later cycle where it triggers.
-
-**Voiceover:**
-"This isn't a bot that YOLOs your wallet. Every trade is small, every trade has a stop-loss, and the circuit breakers are in the code — not in a config file you hope someone read."
-
----
-
-## SCENE 4: ON-CHAIN AUDIT TRAIL — MANTLE + ERC-8004 (1:45 – 2:20)
-
-**Visual:** Switch to Mantis web dashboard. Show the audit trail page.
-
-**Voiceover:**
-"But the real question is: how do you trust an AI with your money? The answer is on-chain audit. Every decision Mantis makes gets permanently recorded."
-
-**Visual:** Show Mantle explorer — ERC-8004 Identity Registry.
-
-**Voiceover:**
-"Mantis has its own ERC-8004 identity on Mantle. It's an NFT that says 'this is an AI agent, and here's what it's authorized to do.' Every trade gets written to the Validation Registry with an IPFS link containing the full reasoning."
-
-**Visual:** Click through to an IPFS entry. Show the rationale: "Opened ETH short at $1,665 because funding rate was 0.0015% (bearish), RSI 51 (neutral-cooling), Fear & Greed at 72 (greed — contrarian short signal). Max loss: $0.45 at 3% SL."
-
-**Voiceover:**
-"This is the difference between a black box and an auditable agent. You can verify WHY it traded, WHEN it traded, and whether it followed its own rules. You audit Mantis the same way you audit a human trader — by looking at the decisions."
+### Checklist:
+- [ ] Dark mode on everything (terminal, browser, editor)
+- [ ] Font size 14–16pt in terminal (readable on video)
+- [ ] Close Slack, email, unrelated tabs, desktop icons
+- [ ] Screen recorder at 1920×1080, system audio OFF
+- [ ] Test your mic — voiceover only, no keyboard sounds
+- [ ] `DRY_RUN=true` in `.env`
 
 ---
 
-## SCENE 5: GUARDRAILS + TRACK B CROSSOVER (2:20 – 2:45)
+## SCENE 1: The Product (0:00–0:25)
 
-**Visual:** Pull up the Mantis SKILL.md file side by side with RealClaw TG.
+**Show:** Browser dashboard at `localhost:3000`
 
-**Voiceover:**
-"Mantis extends RealClaw through a custom skill. This is Track B — RealClaw Expansion. The skill teaches RealClaw about Mantle: how to query our API, check vault state, and verify the audit trail. RealClaw on TG handles the Byreal trading. Our web app handles Mantle DeFi — swaps, lending, yield. Same agent, two surfaces, one identity."
+> "This is Mantis — an autonomous AI agent that trades perpetual futures on Hyperliquid through the Byreal Perps CLI, and manages DeFi on Mantle. Fifteen tools across two chains, one natural language interface. Every decision audited on-chain with ERC-8004."
 
-**Visual:** Show the routing table from the system prompt.
+**Actions:**
+- Point to the dashboard widgets (portfolio, gas price, positions)
+- Point to the chat input
 
-**Voiceover:**
-"And the agent never confuses the two. Say 'swap' — it goes to Mantle. Say 'long ETH' — it goes to Byreal. The system prompt has an explicit routing table. No ambiguity, no guessing."
-
-**Visual:** Show the guardrail dashboard.
-
-**Voiceover:**
-"All of this is wrapped in guardrails. Five dollar max per trade. Three trades per day. Two-x max leverage. If the agent loses three in a row, it pauses itself. These limits are in the code — not configurable through chat. You can't sweet-talk the agent into betting the house."
+> "Let me show you the integrations. Real money. Real execution. Real on-chain identity."
 
 ---
 
-## SCENE 6: CLOSE — THE PITCH (2:45 – 3:00)
+## SCENE 2: Byreal Perps CLI — Live Hyperliquid (0:25–1:00)
 
-**Visual:** Montage — TG trade → terminal loop → on-chain audit → guardrail dashboard. End on Mantis logo.
+**Show:** Switch to Terminal 2. Run these in order, read key values aloud.
 
-**Voiceover:**
-"Mantis is what DeFi should be. An agent that trades for you — through natural language on Telegram, autonomously when you're away, with every decision permanently audited on-chain. Built on Byreal for execution. Built on Mantle for trust."
+> "Mantis talks to Hyperliquid through the Byreal Perps CLI. This is a live mainnet account — no simulation, no testnet. Let me prove it."
 
-**Visual:** Text fades in:
+### Step 1: Account
+```
+byreal-perps-cli -o json account info
+```
+**Point to:** `"accountValue": "19.610000"`, `"withdrawable": "19.610000"`, `"address": "0x92CB..."`
 
+> "Nineteen sixty-one USDC. Live on Hyperliquid mainnet. Fully withdrawable."
+
+### Step 2: Signal scan
+```
+byreal-perps-cli -o json signal scan
+```
+**Scroll through output, point to:** BTC $66,185, ETH $1,763, SOL $72.62. Real RSI values, real funding rates.
+
+> "Thirty coins scanned. Conservative, moderate, aggressive tiers. Funding rates, RSI, MACD, volume, open interest. Eleven DEX order books. All live."
+
+### Step 3: Detailed analysis
+```
+byreal-perps-cli -o json signal detail ETH
+```
+**Point to:** price $1,763, RSI 74.5, MACD bullish, EMA7 > EMA25, "Strong bullish"
+
+> "Per-coin technicals. Oracle price, Bollinger Bands, trend alignment, a trading suggestion. This is the data Mantis feeds to its LLM for decision-making."
+
+---
+
+## SCENE 3: Write Path — Order Lifecycle (1:00–1:25)
+
+**Show:** Terminal 2 — place, verify, cancel (zero risk — limit at $100, ETH is $1,763)
+
+> "Reads work. But writes prove real integration. Let me place a limit order far from market — it will never fill at this price — then cancel it."
+
+```
+byreal-perps-cli -o json order limit long 10 ETH 100
+```
+**Point to:** response confirming order placed.
+
+```
+byreal-perps-cli -o json order list
+```
+**Point to:** the order in the list — it really hit the exchange.
+
+```
+byreal-perps-cli -o json order cancel-all -y
+byreal-perps-cli -o json order list
+```
+**Point to:** empty list — order cancelled cleanly.
+
+> "Order placed on Hyperliquid, verified, and cancelled. The full write pipeline works. When the AI decides to trade, this is exactly what happens — except with a stop-loss attached."
+
+---
+
+## SCENE 4: AI Chat — Market Intelligence (1:25–2:05)
+
+**Show:** Switch to browser. Type each message, let it complete.
+
+> "The chat interface connects DeepSeek's LLM to 15 tools. The agent routes natural language to the right blockchain — Byreal for perps, Mantle for DeFi."
+
+### Message 1: "What's my portfolio?"
+> Shows Hyperliquid account, Mantle wallet balances, open positions.
+**Point to Terminal 1:** the CLI logs (`⚡ byreal-perps-cli -o json account info ✅ OK`)
+
+### Message 2: "Analyze market sentiment for ETH"
+> Shows Fear & Greed Index, CoinGecko price, CryptoPanic news, funding rate, directional score with confidence percentage.
+**Point to Terminal 1:** the sentiment logs (`📊 SENTIMENT: Fetching data for ETH... ✓`)
+
+### Message 3: "What's the strategy right now?"
+> Shows strategy proposal: market signals + whale activity + yield comparison + sentiment → recommendation.
+
+> "The agent pulled data from four free sources — Fear & Greed, CoinGecko, CryptoPanic RSS, and Hyperliquid funding rates — all in parallel. No API keys required. Then DeepSeek evaluated it and produced a structured recommendation with reasoning."
+
+---
+
+## SCENE 5: Autonomous Agent Loop (2:05–2:40)
+
+**Show:** Terminal 2 — kill the previous loop, start fresh. Or use a third terminal.
+
+> "The chat is interactive. But Mantis also runs fully autonomously. Every 10 minutes, it fetches sentiment, evaluates with DeepSeek, and decides whether to trade — all with circuit breakers."
+
+```
+DRY_RUN=true npx tsx src/worker/agent-loop.ts --loop
+```
+
+**Walk through the output as it appears:**
+
+> "Config banner — dry run mode, ETH only, 2x leverage, $20 max position, 75% minimum confidence, $5 daily loss cap."
+
+> "Cycle starts. It checks the wallet — $19.61 equity. Then it fetches sentiment for ETH — Fear & Greed index, CoinGecko price, 45 news headlines, funding rates from Byreal."
+
+> "Sentiment is bullish, score 68, confidence 82%. DeepSeek evaluates: OPEN — 'strong bullish momentum with positive funding.'"
+
+> "But it says DRY RUN: Would LONG ETH — because we're in dry run mode. Flip DRY_RUN=false in .env and this actually executes."
+
+> "Circuit breakers: three consecutive losses and it pauses. Five dollars daily loss cap and it pauses. Minimum balance threshold. Stop-loss attached to every trade. The agent can't go rogue because the code won't let it."
+
+---
+
+## SCENE 6: ERC-8004 On-Chain Identity (2:40–3:05)
+
+**Show:** Switch to browser. Type in chat:
+
+> "Every Mantis action is permanently auditable on-chain. ERC-8004 gives AI agents an identity — name, version, metadata — stored immutably on Mantle."
+
+**Message:** "Show my agent identity"
+
+> Shows address, ERC-8004 IdentityRegistry at `0x8004A169...`, token ID.
+
+> "The Identity Registry is deployed at this address on Mantle mainnet. 183 agents already registered. Once minted, Mantis has a permanent on-chain identity. Every trade gets its rationale hashed, pinned to IPFS, and submitted to the Validation Registry."
+
+> "This means you can verify WHY Mantis traded, WHEN it traded, and whether it followed its own rules. You audit an AI the same way you audit a human trader — by looking at the decisions."
+
+---
+
+## SCENE 7: Architecture Summary (3:05–3:25)
+
+**Show:** VS Code or terminal showing project structure
+
+```
+tree src/agent src/worker src/app -I 'node_modules' --dirsfirst
+```
+
+> "Track A — DeFi Strategy: Merchant Moe DEX swaps, Lendle lending, yield comparison, whale tracking, multi-protocol routing through the AgentVault with on-chain guardrails."
+
+> "Track B — Byreal Agentic Economy: Real CLI integration with live Hyperliquid account, 15-tool AI agent, autonomous trading loop with DeepSeek evaluation and circuit breakers."
+
+> "ERC-8004: On-chain agent identity, IPFS audit trail, reputation scoring. Every action permanently verifiable."
+
+---
+
+## SCENE 8: Closing (3:25–3:40)
+
+**Show:** Back to the dashboard
+
+> "Mantis proves that an AI agent can trade perps, manage DeFi, and audit itself on-chain — all from natural language. Built for the Turing Test Hackathon 2026."
+
+**TEXT ON SCREEN:**
 ```
 Mantis
 Autonomous DeFi Agent
-Byreal Perps × Mantle × ERC-8004
-
-github.com/notshreshth/mantis
+Byreal Perps × Hyperliquid × Mantle × ERC-8004
 ```
 
-**Voiceover:**
-"Two tracks. One agent. Zero trust required."
+> "Thank you."
 
 ---
 
-## RECORDING CHECKLIST
+## QUICK REFERENCE — Commands for Recording
 
-### Before recording:
-- [ ] Fund Hyperliquid wallet with $5-10 USDC
-- [ ] Test a real trade via CLI (`byreal-perps-cli order market long 5 ETH --sl <price> -o json`)
-- [ ] Confirm RealClaw is online and responsive on TG
-- [ ] Clean terminal history, close unrelated tabs, dark mode everything
-- [ ] Pre-open: TG, terminal (agent loop ready to run), web dashboard, Mantle explorer
-- [ ] Add BYREAL env vars to `.env` so agent loop reads balance correctly
+### Scene 2 (CLI reads):
+```bash
+byreal-perps-cli -o json account info
+byreal-perps-cli -o json signal scan
+byreal-perps-cli -o json signal detail ETH
+```
 
-### Scene transitions:
-- Scene 1→2: Cut from black screen to Telegram
-- Scene 2→3: Cut from TG to terminal
-- Scene 3→4: Cut from terminal to web dashboard → Mantle explorer
-- Scene 4→5: Split screen: SKILL.md + TG
-- Scene 5→6: Montage, end on logo
+### Scene 3 (order lifecycle):
+```bash
+byreal-perps-cli -o json order limit long 10 ETH 100
+byreal-perps-cli -o json order list
+byreal-perps-cli -o json order cancel-all -y
+byreal-perps-cli -o json order list
+```
 
-### Audio notes:
-- Clear, unhurried pace. Pause after each demo action.
-- No background music (or very subtle, no vocals)
-- If on-camera: no. Screen recording only with voiceover.
+### Scene 5 (agent loop):
+```bash
+DRY_RUN=true npx tsx src/worker/agent-loop.ts --loop
+```
 
-### One-sentence pitch (for DoraHacks submission):
-"Mantis is an autonomous DeFi agent that trades on Byreal Perps and manages yield on Mantle, with every decision permanently audited on-chain through ERC-8004."
+### Scene 7 (architecture):
+```bash
+tree src/agent src/worker src/app -I 'node_modules' --dirsfirst
+```
 
-### Hackathon alignment:
-- **Track A (DeFi Strategy):** Multi-source sentiment → LLM evaluation → automated Perps execution with stop-losses and circuit breakers
-- **Track B (RealClaw Expansion):** Custom SKILL.md bridges RealClaw to Mantle DeFi, extending the platform's reach to a new chain
-- **ERC-8004:** Identity NFT + Validation Registry + IPFS audit trail for every trade
+---
+
+## SCORING REFERENCE — Byreal Track B
+
+| Criterion | Max | What we show |
+|-----------|-----|-------------|
+| Integration Depth | 18 | Live CLI account ($19.61), signal scan (30 coins, 11 DEXes), order lifecycle (place→verify→cancel), technical analysis |
+| Agent Autonomy | 14 | Autonomous loop with DeepSeek, 4-source sentiment aggregation, circuit breakers, dry-run/live toggle |
+| Use Case Clarity | 10 | NLP→tool routing, clear chain separation (Byreal=perps, Mantle=DeFi), 15 tools |
+| Verifiability | 8 | ERC-8004 on-chain identity, IPFS audit trail, terminal-visible CLI logs |
+
+## SCORING REFERENCE — Mirana Track A
+
+| Criterion | Max | What we show |
+|-----------|-----|-------------|
+| Strategy Logic | 20 | 4-source sentiment → weighted scoring → LLM evaluation → trade decision |
+| Risk Management | 15 | Circuit breakers (loss cap, consecutive losses, min balance), stop-loss on every trade, vault-enforced limits |
+| Execution Quality | 10 | Real Hyperliquid mainnet account, order lifecycle demonstrated, CLI logs visible |
+| Innovation | 5 | ERC-8004 audit trail, autonomous loop, cross-chain tool routing |
