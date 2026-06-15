@@ -47,6 +47,8 @@ const CLI_NAME = 'byreal-perps-cli';
  * Global -o json goes BEFORE the command (this was the bug in v2).
  */
 async function runCli(args: string[]): Promise<unknown> {
+  const cmd = `${CLI_NAME} ${args.join(' ')}`;
+  console.log(`\n⚡ ${cmd}`);
   try {
     const { stdout, stderr } = await exec(CLI_NAME, args, {
       timeout: CLI_TIMEOUT_MS,
@@ -56,12 +58,17 @@ async function runCli(args: string[]): Promise<unknown> {
     }
     const trimmed = stdout.trim();
     try {
-      return JSON.parse(trimmed);
+      const parsed = JSON.parse(trimmed);
+      const status = parsed?.success === false ? '❌ FAILED' : '✅ OK';
+      console.log(`${status} ${parsed?.error?.message ?? ''}`);
+      return parsed;
     } catch {
+      console.log('✅ OK (text)');
       return trimmed;
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    console.log(`❌ ERROR: ${msg}`);
     throw new Error(`Byreal CLI error: ${msg}`);
   }
 }
