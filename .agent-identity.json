@@ -1,0 +1,10 @@
+{
+  "agentId": "132",
+  "address": "0x92CbB44A94BEf56944929e25077F3A4F4F7B95E6",
+  "agentURI": "ipfs://QmNVF7Wx5prSY6SmW2si2NEwZitJTjp3iXAXUmgQtTbDyJ",
+  "ipfsCid": "QmNVF7Wx5prSY6SmW2si2NEwZitJTjp3iXAXUmgQtTbDyJ",
+  "txHash": "0xdeb1e0bfba3d6974caccda7ff14a28e7d3f92fee0a548a724e324bd6f82e8bac",
+  "registeredAt": "2026-06-15T12:37:07.754Z",
+  "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+  "network": "mantle-mainnet"
+}
