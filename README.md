@@ -19,6 +19,10 @@ $19.61 USDC on Hyperliquid mainnet. ERC-8004 identity registered as Token ID 132
 on Mantle mainnet IdentityRegistry (0x8004A169FB4a3325136EB29fA0ceB6D2e539a432).
 Metadata pinned to IPFS at QmNVF7Wx5prSY6SmW2si2NEwZitJTjp3iXAXUmgQtTbDyJ.
 
+
+<img width="1901" height="913" alt="image" src="https://github.com/user-attachments/assets/9f7a7374-f5ca-4f68-b827-4885877ed463" />
+
+
 ---
 
 ## Architecture
