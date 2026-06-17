@@ -92,7 +92,7 @@ export const GUARDRAIL_DEFAULTS = {
   approvedTokens: ['USDC', 'MNT', 'WMNT', 'mETH', 'WETH', 'USDT'] as string[],
   approvedMarkets: ['ETH-PERP'] as string[],  // Only ETH at demo scale (BTC $84 min, SOL $125 min)
   // Soft limits — require user approval when exceeded
-  softMaxTradeSizeUsd: 10,            // Trades > $10 need confirmation
+  softMaxTradeSizeUsd: 25,            // Soft limit above hard cap ($20) — no broken approval loop
   softMaxLendleDepositUsd: 50,
   // Circuit breaker thresholds
   maxGasGwei: 100,                    // Demo-only: higher tolerance

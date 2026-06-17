@@ -167,7 +167,7 @@ export async function vaultExecute(params: VaultExecuteParams): Promise<VaultExe
 
   const { wallet, account } = getMantleWallet();
   const value = params.value ?? 0n;
-  const valueUsd = BigInt(params.valueUsd);
+  const valueUsd = BigInt(Math.round(params.valueUsd));
   const rationaleCid = params.rationaleCid ?? 'ipfs://pending';
 
   try {

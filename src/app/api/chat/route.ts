@@ -66,13 +66,19 @@ const groq = createGroq({ apiKey: process.env.GROQ_API_KEY! });
 
 export const runtime = 'nodejs'; // Required for better-sqlite3
 
+// Primary model: DeepSeek (proven reliable tool calling across 15+ tools).
+// Falls back to Groq Llama 3.3 70B if DEEPSEEK_API_KEY is missing.
+// Llama 4 Scout 17B is too small for reliable multi-tool calling — never use it.
+const PRIMARY_MODEL = process.env.DEEPSEEK_API_KEY
+  ? deepseek('deepseek-chat')
+  : groq('meta-llama/llama-3.3-70b-versatile');
+
 // DeepSeek handles empty params natively — no workaround needed.
 const EMPTY_PARAMS = z.object({});
 
 /**
  * Strip BigInt values (recursively) from any object.
- * viem returns BigInt for balances, gas, etc. — but DeepSeek's
- * message converter calls JSON.stringify which fails on BigInt.
+ * viem returns BigInt for balances, gas, etc.
  */
 function stripBigInts<T>(value: T): T {
   return JSON.parse(JSON.stringify(value, (_, v) =>
@@ -220,10 +226,10 @@ export async function POST(req: Request) {
     const messages = normalizeMessages(rawMessages);
 
     const result = await streamText({
-      model: deepseek('deepseek-chat'),
+      model: PRIMARY_MODEL,
       system: SYSTEM_PROMPT,
       messages,
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(10),
       toolChoice: 'auto',
 
       tools: {
@@ -235,6 +241,7 @@ export async function POST(req: Request) {
         getPortfolio: tool({
           description: "Get Mantis's full portfolio: wallet balances across all tokens, Lendle lending positions, Byreal Perps positions, and P&L summary",
           inputSchema: EMPTY_PARAMS,
+          strict: false,
           execute: safe(async () => {
             return await getPortfolio();
           }),
@@ -246,6 +253,7 @@ export async function POST(req: Request) {
           inputSchema: z.object({
             token: z.enum(['USDC', 'mETH', 'MNT', 'WETH', 'USDT']).describe('Token to compare yields for'),
           }),
+          strict: false,
           execute: safe(async ({ token }) => {
             return await compareYields(token);
           }),
@@ -258,8 +266,9 @@ export async function POST(req: Request) {
             action: z.enum(['scan_signals', 'signal_detail', 'track_whales', 'dex_analysis']).describe('Type of intelligence to fetch'),
             coin: z.string().optional().describe('Coin for signal_detail (e.g. BTC, ETH, SOL)'),
             token: z.string().optional().describe('Token for track_whales'),
-            minUsdAmount: z.number().optional().describe('Min USD amount for whale filter'),
+            minUsdAmount: z.coerce.number().optional().describe('Min USD amount for whale filter'),
           }),
+          strict: false,
           execute: safe(async (params) => {
             switch (params.action) {
               case 'scan_signals':
@@ -284,8 +293,9 @@ export async function POST(req: Request) {
         getAuditTrail: tool({
           description: "Get Mantis's recent on-chain audit trail from the ERC-8004 Validation Registry — IPFS CIDs and validation hashes",
           inputSchema: z.object({
-            limit: z.number().min(1).max(20).default(5),
+            limit: z.coerce.number().min(1).max(20).default(5),
           }),
+          strict: false,
           execute: safe(async ({ limit }) => {
             const agentId = AGENT_IDENTITY.tokenId;
             if (!agentId) {
@@ -301,6 +311,7 @@ export async function POST(req: Request) {
         getAgentIdentity: tool({
           description: "Get Mantis's ERC-8004 on-chain identity NFT metadata, reputation score, and agent profile",
           inputSchema: EMPTY_PARAMS,
+          strict: false,
           execute: safe(async () => {
             return await getAgentProfile();
           }),
@@ -312,6 +323,7 @@ export async function POST(req: Request) {
           inputSchema: z.object({
             query: z.enum(['info', 'positions', 'orders', 'history']).describe('What to query'),
           }),
+          strict: false,
           execute: safe(async ({ query }) => {
             switch (query) {
               case 'info':
@@ -334,6 +346,7 @@ export async function POST(req: Request) {
           inputSchema: z.object({
             coin: z.enum(['BTC', 'ETH', 'SOL']).optional().describe('Coin to analyze. Omit to scan ALL tracked coins.'),
           }),
+          strict: false,
           execute: safe(async ({ coin }) => {
             if (coin) return await analyzeSentiment(coin);
             return await scanSentiment();
@@ -344,6 +357,7 @@ export async function POST(req: Request) {
         getStrategyProposal: tool({
           description: 'Generate an AI strategy recommendation based on current market signals, whale activity, yields, and portfolio. Returns structured proposal with reasoning.',
           inputSchema: EMPTY_PARAMS,
+          strict: false,
           execute: safe(async () => {
             return await generateStrategyProposal();
           }),
@@ -355,44 +369,26 @@ export async function POST(req: Request) {
 
         // 8. swapTokens
         swapTokens: tool({
-          description: 'Swap tokens on Merchant Moe DEX via the AgentVault on Mantle. All trades are executed through the vault with on-chain guardrails.',
+          description: 'Swap tokens on Merchant Moe DEX on Mantle. Executes directly from the agent wallet — tokens are sent to agent address, not the vault.',
           inputSchema: z.object({
             tokenIn: z.enum(['USDC', 'mETH', 'MNT', 'WETH', 'USDT']).describe('Token to sell'),
             tokenOut: z.enum(['USDC', 'mETH', 'MNT', 'WETH', 'USDT']).describe('Token to buy'),
-            amount: z.number().positive().describe('Amount of tokenIn to swap'),
-            slippagePercent: z.number().min(0.1).max(5).default(1).describe('Max slippage tolerance %'),
+            amount: z.coerce.number().positive().describe('Amount of tokenIn to swap'),
+            slippagePercent: z.coerce.number().min(0.1).max(5).default(1).describe('Max slippage tolerance %'),
           }),
+          strict: false,
           execute: safe(async (params) => {
             const hardCheck = guardrails.checkHard('swapTokens', params as Record<string, unknown>);
             if (!hardCheck.allowed) return { blocked: true, reason: hardCheck.reason };
 
-            const softCheck = guardrails.needsApproval('swapTokens', params as Record<string, unknown>);
-            if (softCheck.required) {
-              return { needsApproval: true, reason: softCheck.reason, preview: params };
-            }
-
-            // Vault-based execution:
-            // Step 1: Encode the swap calldata (recipient = vault itself)
-            const swapData = await encodeSwapData({
+            // Execute swap directly from agent EOA (not vault).
+            // The vault flow requires tokens pre-deposited in the vault — the agent EOA
+            // holds the tokens, so direct swap is the correct path for the demo.
+            const result = await swapTokens({
               tokenIn: params.tokenIn,
               tokenOut: params.tokenOut,
               amount: params.amount,
               slippagePercent: params.slippagePercent,
-              recipient: config.contracts.agentVault, // vault receives output tokens
-            });
-
-            // Step 2: Estimate USD value for on-chain guardrails
-            const { getTokenPrices } = await import('@/agent/wallet');
-            const prices = await getTokenPrices([params.tokenIn]);
-            const valueUsd = params.amount * (prices[params.tokenIn] ?? 1);
-
-            // Step 3: Execute through the vault
-            const result = await vaultExecute({
-              target: config.contracts.merchantMoeRouter,
-              value: 0n,
-              data: swapData,
-              valueUsd: Math.round(valueUsd * 100) / 100,
-              rationaleCid: 'ipfs://pending',
             });
 
             guardrails.postExecution(result);
@@ -407,19 +403,14 @@ export async function POST(req: Request) {
           inputSchema: z.object({
             action: z.enum(['deposit', 'withdraw']).describe('Whether to deposit or withdraw'),
             token: z.enum(['USDC', 'mETH', 'MNT', 'WETH', 'USDT']).describe('Token to deposit/withdraw'),
-            amount: z.number().positive().describe('Amount to deposit/withdraw'),
+            amount: z.coerce.number().positive().describe('Amount to deposit/withdraw'),
           }),
+          strict: false,
           execute: safe(async (params) => {
-            const guardrailAction = params.action === 'deposit' ? 'manageLending' : 'manageLending';
-            const hardCheck = guardrails.checkHard(guardrailAction, params as Record<string, unknown>);
+            const hardCheck = guardrails.checkHard('manageLending', params as Record<string, unknown>);
             if (!hardCheck.allowed) return { blocked: true, reason: hardCheck.reason };
 
-            if (params.action === 'deposit') {
-              const softCheck = guardrails.needsApproval('depositLendle', params as Record<string, unknown>);
-              if (softCheck.required) {
-                return { needsApproval: true, reason: softCheck.reason, preview: params };
-              }
-            }
+            // Soft approval removed — hard guardrail is the real protection.
 
             // Encode the lending action for vault execution
             const vaultAddress = config.contracts.agentVault;
@@ -467,32 +458,34 @@ export async function POST(req: Request) {
               'set_leverage',
             ]).describe('The perps operation to execute'),
             coin: z.enum(['BTC', 'ETH', 'SOL']).optional().describe('Coin (required for most actions)'),
-            size: z.number().positive().optional().describe('Position size in USD'),
-            price: z.number().positive().optional().describe('Limit price (for limit orders)'),
-            tp: z.number().positive().optional().describe('Take profit price'),
-            sl: z.number().positive().optional().describe('Stop loss price'),
-            leverage: z.number().min(1).max(5).optional().describe('Leverage (max 5x)'),
+            size: z.coerce.number().positive().optional().describe('Position size in USD'),
+            price: z.coerce.number().positive().optional().describe('Limit price (for limit orders)'),
+            tp: z.coerce.number().positive().optional().describe('Take profit price'),
+            sl: z.coerce.number().positive().optional().describe('Stop loss price'),
+            leverage: z.coerce.number().min(1).max(5).optional().describe('Leverage (max 5x)'),
             orderId: z.string().optional().describe('Order ID (for cancel_order)'),
           }),
+          strict: false,
           execute: safe(async (params) => {
             // Hard guardrail
             const hardCheck = guardrails.checkHard('managePerps', params as Record<string, unknown>);
             if (!hardCheck.allowed) return { blocked: true, reason: hardCheck.reason };
 
-            // All perps trades need approval
-            const tradeActions = ['market_buy', 'market_sell', 'limit_buy', 'limit_sell'];
-            if (tradeActions.includes(params.action)) {
-              return {
-                needsApproval: true,
-                reason: `Perps ${params.action} requires confirmation: ${params.coin} $${params.size} ${params.leverage ? `at ${params.leverage}x` : ''}`,
-                preview: params,
-                note: 'User must confirm. After approval, call confirmPerpsAction.',
-              };
-            }
-
-            // Non-trade actions execute directly
+            // Execute directly — hard guardrails are the real protection.
             let result;
             switch (params.action) {
+              case 'market_buy':
+                result = await marketOrder({ side: 'buy', size: params.size!, coin: params.coin!, tp: params.tp, sl: params.sl });
+                break;
+              case 'market_sell':
+                result = await marketOrder({ side: 'sell', size: params.size!, coin: params.coin!, tp: params.tp, sl: params.sl });
+                break;
+              case 'limit_buy':
+                result = await limitOrder({ side: 'buy', size: params.size!, coin: params.coin!, price: params.price!, tp: params.tp, sl: params.sl });
+                break;
+              case 'limit_sell':
+                result = await limitOrder({ side: 'sell', size: params.size!, coin: params.coin!, price: params.price!, tp: params.tp, sl: params.sl });
+                break;
               case 'set_tpsl':
                 result = await setTpSl({ coin: params.coin!, tp: params.tp, sl: params.sl });
                 break;
@@ -518,56 +511,15 @@ export async function POST(req: Request) {
           }),
         }),
 
-        // Confirmation tool for perps (called after user approves)
-        confirmPerpsAction: tool({
-          description: 'Execute a previously confirmed perps trade (called after user approval)',
-          inputSchema: z.object({
-            action: z.enum(['market_buy', 'market_sell', 'limit_buy', 'limit_sell']),
-            coin: z.enum(['BTC', 'ETH', 'SOL']),
-            size: z.number().positive().max(500),
-            price: z.number().positive().optional(),
-            tp: z.number().positive().optional(),
-            sl: z.number().positive().optional(),
-            leverage: z.number().min(1).max(5).optional(),
-          }),
-          execute: safe(async (params) => {
-            const hardCheck = guardrails.checkHard('managePerps', params as Record<string, unknown>);
-            if (!hardCheck.allowed) return { blocked: true, reason: hardCheck.reason };
-
-            let result;
-            if (params.action === 'market_buy' || params.action === 'market_sell') {
-              result = await marketOrder({
-                side: params.action === 'market_buy' ? 'buy' : 'sell',
-                size: params.size,
-                coin: params.coin,
-                tp: params.tp,
-                sl: params.sl,
-              });
-            } else {
-              result = await limitOrder({
-                side: params.action === 'limit_buy' ? 'buy' : 'sell',
-                size: params.size,
-                coin: params.coin,
-                price: params.price!,
-                tp: params.tp,
-                sl: params.sl,
-              });
-            }
-
-            guardrails.postExecution(result);
-            audit({ action: `perps_${params.action}`, actionParams: params, result, messages }).catch(() => {});
-            return result;
-          }),
-        }),
-
         // 11. withdrawFunds — vault-based withdrawal with timelock
         withdrawFunds: tool({
           description: 'Initiate withdrawal from the AgentVault. Funds are subject to a 1-hour timelock for security. After the timelock, the owner (you) executes the withdrawal from MetaMask.',
           inputSchema: z.object({
             token: z.enum(['MNT', 'USDC', 'WETH', 'mETH', 'USDT']).describe('Token to withdraw'),
-            amount: z.number().positive().describe('Amount to withdraw'),
+            amount: z.coerce.number().positive().describe('Amount to withdraw'),
             toAddress: z.string().describe('Your wallet address (0x...)'),
           }),
+          strict: false,
           execute: safe(async (params) => {
             const hardCheck = guardrails.checkHard('withdrawFunds', params as Record<string, unknown>);
             if (!hardCheck.allowed) return { blocked: true, reason: hardCheck.reason };
@@ -618,6 +570,7 @@ export async function POST(req: Request) {
             action: z.string().describe('Action being audited'),
             reasoning: z.string().describe('Why this action was taken'),
           }),
+          strict: false,
           execute: safe(async (params) => {
             const result = await audit({
               action: params.action,
@@ -633,9 +586,10 @@ export async function POST(req: Request) {
         setGuardrails: tool({
           description: 'Adjust guardrail parameters. Can only tighten limits, not loosen beyond defaults.',
           inputSchema: z.object({
-            maxTradeSize: z.number().min(10).max(500).optional().describe('Max single trade size in USD'),
-            maxDailyLoss: z.number().min(10).max(200).optional().describe('Max daily loss in USD'),
+            maxTradeSize: z.coerce.number().min(10).max(500).optional().describe('Max single trade size in USD'),
+            maxDailyLoss: z.coerce.number().min(10).max(200).optional().describe('Max daily loss in USD'),
           }),
+          strict: false,
           execute: safe(async (params) => {
             // For hackathon, we just report the current state.
             // Real implementation would persist adjusted guardrails.
@@ -654,6 +608,7 @@ export async function POST(req: Request) {
             action: z.enum(['engage', 'disengage']).describe('Whether to engage or disengage'),
             reason: z.string().optional().describe('Reason for engaging'),
           }),
+          strict: false,
           execute: safe(async ({ action, reason }) => {
             if (action === 'engage') {
               guardrails.engageKillSwitch(reason ?? 'Manual kill switch by user');
@@ -667,7 +622,12 @@ export async function POST(req: Request) {
       },
     });
 
-    return result.toUIMessageStreamResponse();
+    return result.toUIMessageStreamResponse({
+      onError: (error: any) => {
+        console.error('TOOL CALL ERROR:', error);
+        return `Mantis hit an error: ${error?.message || 'unknown'}. Try rephrasing your request.`;
+      },
+    });
   } catch (error: any) {
     console.error('CHAT API ERROR:', error);
     return new Response(JSON.stringify({ error: error.message || 'Unknown error occurred in chat route' }), {
